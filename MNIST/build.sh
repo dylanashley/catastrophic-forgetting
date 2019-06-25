@@ -1,7 +1,7 @@
 #!/bin/sh
 
 SCRIPT=$(dirname "$0")'/__main__.py'
-TASKS_PER_FILE=9999
+TASKS_PER_FILE=200
 
 # assert command line arguments valid
 if [ "$#" -gt "0" ]
@@ -10,16 +10,19 @@ if [ "$#" -gt "0" ]
         exit
     fi
 
-# collect all tasks
-rm tasks_*.sh 2>/dev/null
+# amalgamate all tasks
+TASKS_PREFIX='tasks_'
+rm "$TASKS_PREFIX"*.sh 2>/dev/null
 rm tasks.sh 2>/dev/null
+for SEED in `seq 0 9`; do
 for FOLD in `seq 0 9`; do
 for T1_EPOCHS in '5' '10' '25'; do
 for T2_EPOCHS in '5' '10' '25'; do
 for LR in '1e-1' '1e-2' '1e-3' '1e-4'; do
         for MOMENTUM in '0.0' '0.75' '0.9' '0.999'; do
-            PREFIX='123_'"$FOLD"'_sgd_'"$T1_EPOCHS"'_'"$T2_EPOCHS"'_'"$LR"'_'"$MOMENTUM"
+            PREFIX='123_'"$FOLD"'_sgd_'"$T1_EPOCHS"'_'"$T2_EPOCHS"'_'"$LR"'_'"$MOMENTUM"'_'
             ARGS=("$PREFIX"
+                  "$SEED"
                   "$FOLD"
                   'sgd'
                   "$T1_EPOCHS"
@@ -30,8 +33,9 @@ for LR in '1e-1' '1e-2' '1e-3' '1e-4'; do
         done
 
         for RHO in '0.9' '0.999' '0.99999'; do
-            PREFIX='123_'"$FOLD"'_rms_'"$T1_EPOCHS"'_'"$T2_EPOCHS"'_'"$LR"'_'"$RHO"
+            PREFIX='123_'"$FOLD"'_rms_'"$T1_EPOCHS"'_'"$T2_EPOCHS"'_'"$LR"'_'"$RHO"'_'
             ARGS=("$PREFIX"
+                  "$SEED"
                   "$FOLD"
                   'rms'
                   "$T1_EPOCHS"
@@ -45,6 +49,7 @@ for LR in '1e-1' '1e-2' '1e-3' '1e-4'; do
         for BETA_2 in '0.9' '0.999' '0.99999'; do
             PREFIX='123_'"$FOLD"'_adam_'"$T1_EPOCHS"'_'"$T2_EPOCHS"'_'"$LR"'_'"$BETA_1"'_'"$BETA_2"'_'
             ARGS=("$PREFIX"
+                  "$SEED"
                   "$FOLD"
                   'adam'
                   "$T1_EPOCHS"
@@ -59,19 +64,27 @@ done
 done
 done
 done
+done
 
 # split tasks into files
 perl -MList::Util=shuffle -e 'print shuffle(<STDIN>);' < tasks.sh > temp.sh
 rm tasks.sh 2>/dev/null
-split -l $TASKS_PER_FILE -a 2 temp.sh
+split -l $TASKS_PER_FILE -a 3 temp.sh
 rm temp.sh
 AL=({a..z})
-PREFIX='tasks_'
 for i in `seq 0 25`; do
     for j in `seq 0 25`; do
-        ID=$((i * 26 + j))
-        ID=${ID##+(0)}
-        mv 'x'"${AL[i]}${AL[j]}" "$PREFIX""$ID"'.sh' 2>/dev/null
-        chmod +x "$PREFIX""$ID"'.sh' 2>/dev/null
+        for k in `seq 0 25`; do
+        FILE='x'"${AL[i]}${AL[j]}${AL[k]}"
+        if [ -f $FILE ]; then
+            ID=$((i * 26 * 26 + j * 26 + k))
+            ID=${ID##+(0)}
+            mv 'x'"${AL[i]}${AL[j]}${AL[k]}" "$TASKS_PREFIX""$ID"'.sh' 2>/dev/null
+            chmod +x "$TASKS_PREFIX""$ID"'.sh' 2>/dev/null
+        else
+            break 3
+        fi
+        done
     done
 done
+echo $ID

@@ -4,6 +4,10 @@
 import argparse
 import numpy as np
 import tensorflow as tf
+import warnings
+
+tf.logging.set_verbosity('FATAL')
+warnings.filterwarnings('ignore')
 
 NUM_FOLDS = 10
 
@@ -14,6 +18,10 @@ parser.add_argument(
     'prefix',
     type=str,
     help='prefix for all output files')
+parser.add_argument(
+    'seed',
+    type=int,
+    help='seed for numpy random number generator')
 parser.add_argument(
     'fold',
     type=int,
@@ -63,6 +71,9 @@ if 'beta_1' not in args:
 if 'rho' not in args:
     args['rho'] = None
 
+# seed numpy random num ber generator
+np.random.seed(args['seed'])
+
 # load mnist
 mnist = tf.keras.datasets.mnist
 (raw_x_train, raw_y_train), (raw_x_test, raw_y_test) = mnist.load_data()
@@ -96,14 +107,23 @@ t2_y_test = raw_y_train[t2_test_mask] - 1
 
 # build model
 model = tf.keras.models.Sequential([
-    tf.keras.layers.Flatten(input_shape=(28, 28)),
-    tf.keras.layers.Dense(100, activation=tf.nn.relu),
-    tf.keras.layers.Dense(3, activation=tf.nn.softmax)
-])
+    tf.keras.layers.Flatten(
+        input_shape=(28, 28)),
+    tf.keras.layers.Dense(
+        100,
+        activation=tf.nn.relu,
+        kernel_initializer=tf.keras.initializers.glorot_normal(
+            seed=np.random.randint(2 ** 16 - 1))),
+    tf.keras.layers.Dense(
+        3,
+        activation=tf.nn.softmax,
+        kernel_initializer=tf.keras.initializers.glorot_normal(
+            seed=np.random.randint(2 ** 16 - 1)))])
 
 # open results file
 outfile = open('{}results.csv'.format(args['prefix']), 'w')
 print(
+    'seed,'
     'test_fold,'
     'optimizer,'
     't1_epochs,'
@@ -117,7 +137,8 @@ print(
     'stage,'
     'accuracy',
     file=outfile)
-print_prefix = '{},{},{},{},{},{},{},{},{}'.format(
+print_prefix = '{},{},{},{},{},{},{},{},{},{}'.format(
+    args['seed'],
     args['fold'],
     args['optimizer'],
     args['t1_epochs'],
@@ -131,7 +152,12 @@ print_prefix = '{},{},{},{},{},{},{},{},{}'.format(
 # train and test
 if args['optimizer'] == 'sgd':
     optimizer = tf.keras.optimizers.SGD(
-        lr=float(args['lr']))
+        lr=float(args['lr']),
+        momentum=float(args['momentum']))
+elif args['optimizer'] == 'rms':
+    optimizer = tf.keras.optimizers.RMSprop(
+        lr=float(args['lr']),
+        rho=float(args['rho']))
 else:
     assert(args['optimizer'] == 'adam')
     optimizer = tf.keras.optimizers.Adam(
