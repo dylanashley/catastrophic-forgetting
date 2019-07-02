@@ -2,12 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import numpy as np
-import tensorflow as tf
-import warnings
-
-tf.logging.set_verbosity('FATAL')
-warnings.filterwarnings('ignore')
+import os
+import sys
 
 NUM_FOLDS = 10
 
@@ -19,48 +15,48 @@ parser.add_argument(
     type=str,
     help='prefix for all output files')
 parser.add_argument(
+    'digits',
+    type=str,
+    help='semicolon separated list of digits to train and test on')
+parser.add_argument(
     'seed',
     type=int,
     help='seed for numpy random number generator')
 parser.add_argument(
     'fold',
     type=int,
-    help='fold index for testing on both datasets')
+    help='fold index for testing')
 subparsers = parser.add_subparsers(
     dest='optimizer',
-    help='optimizer for training on both datasets')
+    help='optimizer for training')
 sgd_parser = subparsers.add_parser('sgd')
 adam_parser = subparsers.add_parser('adam')
 rms_parser = subparsers.add_parser('rms')
 for subparser in [sgd_parser, adam_parser, rms_parser]:
     subparser.add_argument(
-        't1_epochs',
-        type=int,
-        help='number of epochs for training on first dataset')
-    subparser.add_argument(
-        't2_epochs',
-        type=int,
-        help='number of epochs for training on second dataset')
+        'epochs',
+        type=str,
+        help='semicolon separated list number of epochs to train')
     subparser.add_argument(
         'lr',
         type=str,
-        help='learning rate for training on both datasets')
+        help='learning rate for training')
 sgd_parser.add_argument(
     'momentum',
     type=str,
-    help='momentum hyperparameter for sgd on both datasets')
+    help='momentum hyperparameter for sgd')
 adam_parser.add_argument(
     'beta_1',
     type=str,
-    help='beta 1 hyperparameter for adam on both datasets')
+    help='beta 1 hyperparameter for adam')
 adam_parser.add_argument(
     'beta_2',
     type=str,
-    help='beta 2 hyperparameter for adam on both datasets')
+    help='beta 2 hyperparameter for adam')
 rms_parser.add_argument(
     'rho',
     type=str,
-    help='rho hyperparameter for RMSprop on both datasets')
+    help='rho hyperparameter for RMSprop')
 args = vars(parser.parse_args())
 if 'momentum' not in args:
     args['momentum'] = None
@@ -70,8 +66,24 @@ if 'beta_1' not in args:
     args['beta_2'] = None
 if 'rho' not in args:
     args['rho'] = None
+for key, value in args.items():
+    try:
+        args[key] = value.strip('\'')
+    except AttributeError:
+        pass
 
-# seed numpy random num ber generator
+if os.path.isfile('./{}results.csv'.format(args['prefix'])):
+    sys.stderr.write('WARNING: skipping as {}results.csv already exists\n'.format(args['prefix']))
+    sys.exit(0)
+
+import numpy as np
+import tensorflow as tf
+import warnings
+
+tf.logging.set_verbosity('FATAL')
+warnings.filterwarnings('ignore')
+
+# seed numpy random number generator
 np.random.seed(args['seed'])
 
 # load mnist
@@ -92,18 +104,14 @@ def build_masks(digits, test_fold):
             else:
                 train_mask += masks[fold][digit]
     return train_mask, test_mask
-t1_train_mask, t1_test_mask = build_masks([1, 2], args['fold'])
-t2_train_mask, t2_test_mask = build_masks([3], args['fold'])
+digits = [int(i) for i in args['digits'].split(';')]
+train_mask, test_mask = build_masks(digits, args['fold'])
 
 # build train and test dataset
-t1_x_train = raw_x_train[t1_train_mask, ...]
-t1_y_train = raw_y_train[t1_train_mask] - 1
-t1_x_test = raw_x_train[t1_test_mask, ...]
-t1_y_test = raw_y_train[t1_test_mask] - 1
-t2_x_train = raw_x_train[t2_train_mask, ...]
-t2_y_train = raw_y_train[t2_train_mask] - 1
-t2_x_test = raw_x_train[t2_test_mask, ...]
-t2_y_test = raw_y_train[t2_test_mask] - 1
+x_train = raw_x_train[train_mask, ...]
+y_train = raw_y_train[train_mask] - 1
+x_test = raw_x_train[test_mask, ...]
+y_test = raw_y_train[test_mask] - 1
 
 # build model
 model = tf.keras.models.Sequential([
@@ -126,30 +134,27 @@ print(
     'seed,'
     'test_fold,'
     'optimizer,'
-    't1_epochs,'
-    't2_epochs,'
     'learning_rate,'
     'momentum,'
     'beta_1,'
     'beta_2,'
     'rho,'
-    'dataset,'
-    'stage,'
-    'accuracy',
+    'epochs,'
+    'accuracies,'
+    'final_accuracy,'
+    'digit_predictions',
     file=outfile)
-print_prefix = '{},{},{},{},{},{},{},{},{},{}'.format(
+print_prefix = '{},{},{},{},{},{},{},{}'.format(
     args['seed'],
     args['fold'],
     args['optimizer'],
-    args['t1_epochs'],
-    args['t1_epochs'],
     args['lr'],
     args['momentum'],
     args['beta_1'],
     args['beta_2'],
     args['rho'])
 
-# train and test
+# prepare optimizer
 if args['optimizer'] == 'sgd':
     optimizer = tf.keras.optimizers.SGD(
         lr=float(args['lr']),
@@ -165,31 +170,34 @@ else:
         beta_1=float(args['beta_1']),
         beta_2=float(args['beta_2']))
 
-# run everything
+# train on the first dataset
+def predictions_matrix(model):
+    test_predictions = np.argmax(model.predict(x_test), axis=1)
+    rv = list()
+    for i in digits:
+        for j in digits:
+            rv.append(np.sum(np.logical_and(test_predictions + 1 == i, y_test + 1 == j)))
+    return rv
 model.compile(
     optimizer=optimizer,
     loss='sparse_categorical_crossentropy',
     metrics=['accuracy'])
-model.fit(t1_x_train, t1_y_train, epochs=args['t1_epochs'])
-print('{0},1,pre,{1:.6f}'.format(
-    print_prefix,
-    model.evaluate(t1_x_test, t1_y_test)[1]),
-    file=outfile)
-print('{0},2,pre,{1:.6f}'.format(
-    print_prefix,
-    model.evaluate(t2_x_test, t2_y_test)[1]),
-    file=outfile)
-model.save('{}pre.h5'.format(args['prefix']))
-model.fit(t2_x_train, t2_y_train, epochs=args['t2_epochs'])
-print('{0},1,post,{1:.6f}'.format(
-    print_prefix,
-    model.evaluate(t1_x_test, t1_y_test)[1]),
-    file=outfile)
-print('{0},2,post,{1:.6f}'.format(
-    print_prefix,
-    model.evaluate(t2_x_test, t2_y_test)[1]),
-    file=outfile)
-model.save('{}post.h5'.format(args['prefix']))
+epochs = [int(i) for i in args['epochs'].split(';')]
+accuracies = list()
+predictions = list()
+for epoch in range(1, max(epochs) + 1):
+    model.fit(x_train, y_train)
+    predictions.append('|'.join([str(i) for i in predictions_matrix(model)]))
+    accuracies.append('{0:.6f}'.format(model.evaluate(x_test, y_test)[1]))
+    if epoch in epochs:
+        print('{},{},{},{},{}'.format(
+            print_prefix,
+            epoch,
+            ';'.join(accuracies),
+            accuracies[-1],
+            ';'.join(predictions)),
+            file=outfile)
+model.save('{}model.h5'.format(args['prefix']))
 
 # close results file
 outfile.close()

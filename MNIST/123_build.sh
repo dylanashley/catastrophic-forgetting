@@ -1,6 +1,6 @@
 #!/bin/sh
 
-SCRIPT=$(dirname "$0")'/__main__.py'
+SCRIPT=$(dirname "$0")'/123_run.py'
 TASKS_PER_FILE=200
 
 # assert command line arguments valid
@@ -14,7 +14,7 @@ if [ "$#" -gt "0" ]
 TASKS_PREFIX='tasks_'
 rm "$TASKS_PREFIX"*.sh 2>/dev/null
 rm tasks.sh 2>/dev/null
-for SEED in `seq 0 9`; do
+for SEED in `seq 0 0`; do
 for FOLD in `seq 0 9`; do
 for T1_EPOCHS in '5' '10' '25'; do
 for T2_EPOCHS in '5' '10' '25'; do
