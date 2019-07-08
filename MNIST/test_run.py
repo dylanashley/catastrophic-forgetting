@@ -17,7 +17,7 @@ parser.add_argument(
 parser.add_argument(
     'digits',
     type=str,
-    help='semicolon separated list of digits to train and test on')
+    help='colon separated list of digits to train and test on')
 parser.add_argument(
     'seed',
     type=int,
@@ -26,6 +26,10 @@ parser.add_argument(
     'fold',
     type=int,
     help='fold index for testing')
+parser.add_argument(
+    'architecture',
+    type=str,
+    help='colon separated architecture of the hidden layers of the network')
 subparsers = parser.add_subparsers(
     dest='optimizer',
     help='optimizer for training')
@@ -36,7 +40,7 @@ for subparser in [sgd_parser, adam_parser, rms_parser]:
     subparser.add_argument(
         'epochs',
         type=str,
-        help='semicolon separated list number of epochs to train')
+        help='colon separated list number of epochs to train')
     subparser.add_argument(
         'lr',
         type=str,
@@ -66,11 +70,6 @@ if 'beta_1' not in args:
     args['beta_2'] = None
 if 'rho' not in args:
     args['rho'] = None
-for key, value in args.items():
-    try:
-        args[key] = value.strip('\'')
-    except AttributeError:
-        pass
 
 if os.path.isfile('./{}results.csv'.format(args['prefix'])):
     sys.stderr.write('WARNING: skipping as {}results.csv already exists\n'.format(args['prefix']))
@@ -104,7 +103,7 @@ def build_masks(digits, test_fold):
             else:
                 train_mask += masks[fold][digit]
     return train_mask, test_mask
-digits = [int(i) for i in args['digits'].split(';')]
+digits = [int(i) for i in args['digits'].split(':')]
 train_mask, test_mask = build_masks(digits, args['fold'])
 
 # build train and test dataset
@@ -114,25 +113,27 @@ x_test = raw_x_train[test_mask, ...]
 y_test = raw_y_train[test_mask] - 1
 
 # build model
-model = tf.keras.models.Sequential([
-    tf.keras.layers.Flatten(
-        input_shape=(28, 28)),
-    tf.keras.layers.Dense(
-        100,
+layers = list()
+layers.append(tf.keras.layers.Flatten(input_shape=(28, 28)))
+for hidden_units in [int(i) for i in args['architecture'].split(':')]:
+    layers.append(tf.keras.layers.Dense(
+        hidden_units,
         activation=tf.nn.relu,
         kernel_initializer=tf.keras.initializers.glorot_normal(
-            seed=np.random.randint(2 ** 16 - 1))),
-    tf.keras.layers.Dense(
-        3,
-        activation=tf.nn.softmax,
-        kernel_initializer=tf.keras.initializers.glorot_normal(
-            seed=np.random.randint(2 ** 16 - 1)))])
+            seed=np.random.randint(2 ** 16 - 1))))
+layers.append(tf.keras.layers.Dense(
+    3,
+    activation=tf.nn.softmax,
+    kernel_initializer=tf.keras.initializers.glorot_normal(
+        seed=np.random.randint(2 ** 16 - 1))))
+model = tf.keras.models.Sequential(layers)
 
 # open results file
 outfile = open('{}results.csv'.format(args['prefix']), 'w')
 print(
     'seed,'
     'test_fold,'
+    'architecture,'
     'optimizer,'
     'learning_rate,'
     'momentum,'
@@ -142,11 +143,12 @@ print(
     'epochs,'
     'accuracies,'
     'final_accuracy,'
-    'digit_predictions',
+    'predictions',
     file=outfile)
-print_prefix = '{},{},{},{},{},{},{},{}'.format(
+print_prefix = '{},{},{},{},{},{},{},{},{}'.format(
     args['seed'],
     args['fold'],
+    args['architecture'],
     args['optimizer'],
     args['lr'],
     args['momentum'],
@@ -182,22 +184,21 @@ model.compile(
     optimizer=optimizer,
     loss='sparse_categorical_crossentropy',
     metrics=['accuracy'])
-epochs = [int(i) for i in args['epochs'].split(';')]
+epochs = [int(i) for i in args['epochs'].split(':')]
 accuracies = list()
 predictions = list()
 for epoch in range(1, max(epochs) + 1):
     model.fit(x_train, y_train)
-    predictions.append('|'.join([str(i) for i in predictions_matrix(model)]))
+    predictions.append(':'.join([str(i) for i in predictions_matrix(model)]))
     accuracies.append('{0:.6f}'.format(model.evaluate(x_test, y_test)[1]))
     if epoch in epochs:
         print('{},{},{},{},{}'.format(
             print_prefix,
             epoch,
-            ';'.join(accuracies),
+            '_'.join(accuracies),
             accuracies[-1],
-            ';'.join(predictions)),
+            '_'.join(predictions)),
             file=outfile)
-model.save('{}model.h5'.format(args['prefix']))
 
 # close results file
 outfile.close()

@@ -2,12 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import numpy as np
-import tensorflow as tf
-import warnings
-
-tf.logging.set_verbosity('FATAL')
-warnings.filterwarnings('ignore')
+import os
+import sys
 
 NUM_FOLDS = 10
 
@@ -26,6 +22,10 @@ parser.add_argument(
     'fold',
     type=int,
     help='fold index for testing on both datasets')
+parser.add_argument(
+    'architecture',
+    type=str,
+    help='colon separated architecture of the hidden layers of the network')
 subparsers = parser.add_subparsers(
     dest='optimizer',
     help='optimizer for training on both datasets')
@@ -34,13 +34,9 @@ adam_parser = subparsers.add_parser('adam')
 rms_parser = subparsers.add_parser('rms')
 for subparser in [sgd_parser, adam_parser, rms_parser]:
     subparser.add_argument(
-        't1_epochs',
-        type=int,
-        help='number of epochs for training on first dataset')
-    subparser.add_argument(
-        't2_epochs',
-        type=int,
-        help='number of epochs for training on second dataset')
+        'epochs',
+        type=str,
+        help='colon separated list number of epochs to train on both datasets')
     subparser.add_argument(
         'lr',
         type=str,
@@ -70,6 +66,17 @@ if 'beta_1' not in args:
     args['beta_2'] = None
 if 'rho' not in args:
     args['rho'] = None
+
+if os.path.isfile('./{}results.csv'.format(args['prefix'])):
+    sys.stderr.write('WARNING: skipping as {}results.csv already exists\n'.format(args['prefix']))
+    sys.exit(0)
+
+import numpy as np
+import tensorflow as tf
+import warnings
+
+tf.logging.set_verbosity('FATAL')
+warnings.filterwarnings('ignore')
 
 # seed numpy random number generator
 np.random.seed(args['seed'])
@@ -106,49 +113,51 @@ t2_x_test = raw_x_train[t2_test_mask, ...]
 t2_y_test = raw_y_train[t2_test_mask] - 1
 
 # build model
-model = tf.keras.models.Sequential([
-    tf.keras.layers.Flatten(
-        input_shape=(28, 28)),
-    tf.keras.layers.Dense(
-        100,
+layers = list()
+layers.append(tf.keras.layers.Flatten(input_shape=(28, 28)))
+for hidden_units in [int(i) for i in args['architecture'].split(':')]:
+    layers.append(tf.keras.layers.Dense(
+        hidden_units,
         activation=tf.nn.relu,
         kernel_initializer=tf.keras.initializers.glorot_normal(
-            seed=np.random.randint(2 ** 16 - 1))),
-    tf.keras.layers.Dense(
-        3,
-        activation=tf.nn.softmax,
-        kernel_initializer=tf.keras.initializers.glorot_normal(
-            seed=np.random.randint(2 ** 16 - 1)))])
+            seed=np.random.randint(2 ** 16 - 1))))
+layers.append(tf.keras.layers.Dense(
+    3,
+    activation=tf.nn.softmax,
+    kernel_initializer=tf.keras.initializers.glorot_normal(
+        seed=np.random.randint(2 ** 16 - 1))))
+model = tf.keras.models.Sequential(layers)
 
 # open results file
 outfile = open('{}results.csv'.format(args['prefix']), 'w')
 print(
     'seed,'
     'test_fold,'
+    'architecture,'
     'optimizer,'
     'learning_rate,'
     'momentum,'
     'beta_1,'
     'beta_2,'
     'rho,'
-    't1_epochs,'
-    't2_epochs,'
-    'dataset,'
+    'epochs,'
     'stage,'
-    'accuracies,'
-    'final_accuracy',
+    't1_accuracies,'
+    't2_accuracies,'
+    't1_final_accuracy,'
+    't2_final_accuracy,'
+    'predictions',
     file=outfile)
-print_prefix = '{},{},{},{},{},{},{},{},{},{}'.format(
+print_prefix = '{},{},{},{},{},{},{},{},{}'.format(
     args['seed'],
     args['fold'],
+    args['architecture'],
     args['optimizer'],
     args['lr'],
     args['momentum'],
     args['beta_1'],
     args['beta_2'],
-    args['rho'],
-    args['t1_epochs'],
-    args['t1_epochs'])
+    args['rho'])
 
 # prepare optimizer
 if args['optimizer'] == 'sgd':
@@ -166,47 +175,60 @@ else:
         beta_1=float(args['beta_1']),
         beta_2=float(args['beta_2']))
 
-# train on the first dataset
+# train on the both datasets
+def predictions_matrix(model, x_test, y_test):
+    test_predictions = np.argmax(model.predict(x_test), axis=1)
+    rv = list()
+    for i in [1, 2, 3]:
+        for j in [1, 2, 3]:
+            rv.append(np.sum(np.logical_and(test_predictions + 1 == i, y_test + 1 == j)))
+    return np.array(rv)
 model.compile(
     optimizer=optimizer,
     loss='sparse_categorical_crossentropy',
     metrics=['accuracy'])
+weights_filename = '{}model_weights.h5'.format(args['prefix'])
+epochs = [int(i) for i in args['epochs'].split(':')]
 t1_accuracies = list()
 t2_accuracies = list()
-for epoch in range(args['t1_epochs']):
+predictions = list()
+for t1_epoch in range(1, max(epochs) + 1):
     model.fit(t1_x_train, t1_y_train)
     t1_accuracies.append('{0:.6f}'.format(model.evaluate(t1_x_test, t1_y_test)[1]))
     t2_accuracies.append('{0:.6f}'.format(model.evaluate(t2_x_test, t2_y_test)[1]))
-print('{},1,pre,{},{}'.format(
-    print_prefix,
-    ';'.join(t1_accuracies),
-    t1_accuracies[-1]),
-    file=outfile)
-print('{},2,pre,{},{}'.format(
-    print_prefix,
-    ';'.join(t2_accuracies),
-    t2_accuracies[-1]),
-    file=outfile)
-model.save('{}pre.h5'.format(args['prefix']))
-
-# train on the second dataset
-t1_accuracies.clear()
-t2_accuracies.clear()
-for epoch in range(args['t2_epochs']):
-    model.fit(t2_x_train, t2_y_train)
-    t1_accuracies.append('{0:.6f}'.format(model.evaluate(t1_x_test, t1_y_test)[1]))
-    t2_accuracies.append('{0:.6f}'.format(model.evaluate(t2_x_test, t2_y_test)[1]))
-print('{},1,post,{},{}'.format(
-    print_prefix,
-    ';'.join(t1_accuracies),
-    t1_accuracies[-1]),
-    file=outfile)
-print('{},2,post,{},{}'.format(
-    print_prefix,
-    ';'.join(t2_accuracies),
-    t2_accuracies[-1]),
-    file=outfile)
-model.save('{}post.h5'.format(args['prefix']))
+    predictions.append(':'.join([str(i) for i in \
+        predictions_matrix(model, t1_x_test, t1_y_test) + predictions_matrix(model, t2_x_test, t2_y_test)]))
+    if t1_epoch in epochs:
+        print('{},{},pre,{},{},{},{},{}'.format(
+            print_prefix,
+            t1_epoch,
+            '_'.join(t1_accuracies),
+            '_'.join(t2_accuracies),
+            t1_accuracies[-1],
+            t2_accuracies[-1],
+            '_'.join(predictions)),
+            file=outfile)
+        model.save_weights(weights_filename)
+        for t2_epoch in range(1, t1_epoch + 1):
+            model.fit(t2_x_train, t2_y_train)
+            t1_accuracies.append('{0:.6f}'.format(model.evaluate(t1_x_test, t1_y_test)[1]))
+            t2_accuracies.append('{0:.6f}'.format(model.evaluate(t2_x_test, t2_y_test)[1]))
+            predictions.append(':'.join([str(i) for i in \
+                predictions_matrix(model, t1_x_test, t1_y_test) + predictions_matrix(model, t2_x_test, t2_y_test)]))
+        print('{},{},post,{},{},{},{},{}'.format(
+            print_prefix,
+            t1_epoch,
+            '_'.join(t1_accuracies),
+            '_'.join(t2_accuracies),
+            t1_accuracies[-1],
+            t2_accuracies[-1],
+            '_'.join(predictions)),
+            file=outfile)
+        model.load_weights(weights_filename)
+        t1_accuracies = t1_accuracies[:t1_epoch]
+        t2_accuracies = t2_accuracies[:t1_epoch]
+        predictions = predictions[:t1_epoch]
+os.remove(weights_filename)
 
 # close results file
 outfile.close()
