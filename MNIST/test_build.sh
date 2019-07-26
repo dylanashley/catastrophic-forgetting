@@ -1,7 +1,7 @@
 #!/bin/sh
 
 SCRIPT=$(dirname "$0")'/test_run.py'
-TASKS_PER_FILE=50
+TASKS_PER_FILE=100
 
 # assert command line arguments valid
 if [ "$#" -gt "0" ]
@@ -17,9 +17,9 @@ rm tasks.sh 2>/dev/null
 for SEED in `seq 0 2`; do
 for DIGITS in '1:2:3'; do
 for FOLD in `seq 0 9`; do
-for ARCH in '100' '50:50'; do
-for EPOCHS in '5:10:20:40:80'; do
-for LR in '1e-1' '1e-2' '1e-3' '1e-4'; do
+for ARCH in '100'; do
+for EPOCHS in '50'; do
+for LR in '1e-1' '1e-2' '1e-3' '1e-4' '1e-5'; do
         for MOMENTUM in '0.0' '0.75' '0.9' '0.999'; do
             PREFIX='test_'"$SEED"'_'"$DIGITS"'_'"$FOLD"'_'"$ARCH"'_sgd_'"$EPOCHS"'_'"$LR"'_'"$MOMENTUM"'_'
             ARGS=("$PREFIX"

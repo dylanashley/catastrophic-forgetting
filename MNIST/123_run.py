@@ -119,12 +119,12 @@ for hidden_units in [int(i) for i in args['architecture'].split(':')]:
     layers.append(tf.keras.layers.Dense(
         hidden_units,
         activation=tf.nn.relu,
-        kernel_initializer=tf.keras.initializers.glorot_normal(
+        kernel_initializer=tf.keras.initializers.RandomNormal(
             seed=np.random.randint(2 ** 16 - 1))))
 layers.append(tf.keras.layers.Dense(
     3,
     activation=tf.nn.softmax,
-    kernel_initializer=tf.keras.initializers.glorot_normal(
+    kernel_initializer=tf.keras.initializers.RandomNormal(
         seed=np.random.randint(2 ** 16 - 1))))
 model = tf.keras.models.Sequential(layers)
 
