@@ -35,6 +35,10 @@ parser.add_argument(
     type=str,
     help='colon separated sets of digits for different phases')
 parser.add_argument(
+    'log_frequency',
+    type=int,
+    help='number of examples to learn on before recording accuracies and predictions')
+parser.add_argument(
     'criteria',
     type=float,
     help='accuracy criteria to move onto next stage')
@@ -92,7 +96,9 @@ experiment['digits'] = sorted(list(set(i for j in experiment['phases'] for i in 
 assert(all([0 <= digit <= 9 for digit in experiment['digits']]))
 experiment['has_all_digits_phase'] = tuple(experiment['digits']) in \
     set([tuple(phase) for phase in experiment['phases']])
+assert(0 < experiment['log_frequency'])
 assert(0 < experiment['criteria'] <= 1)
+assert(0 < experiment['tolerance'])
 architecture = [int(i) for i in experiment['architecture'].split(':')]
 assert(all([0 < i for i in architecture]))
 if 'momentum' not in experiment:
@@ -105,6 +111,7 @@ if 'rho' not in experiment:
     experiment['rho'] = None
 
 # args processed; import everything for experiment
+import datetime
 import json
 import numpy as np
 import tensorflow as tf
@@ -221,31 +228,35 @@ def get_predictions():
                 count / np.sum(y_test[-1] + min(experiment['digits']) == experiment['digits'][j])
     return rv.tolist()
 def validate(phase):
-    return model.evaluate(x_validation[phase], y_validation[phase])[1] < experiment['criteria']
+    return model.evaluate(x_validation[phase], y_validation[phase])[1] >= experiment['criteria']
 
 # run experiment
 model.compile(
     optimizer=optimizer,
     loss='sparse_categorical_crossentropy',
     metrics=['accuracy'])
-experiment['accuracies'].append(get_accuracies())
-experiment['predictions'].append(get_predictions())
 for phase in range(len(experiment['phases'])):
-    step = 0
-    while validate(phase):
-        model.fit(x_train[phase], y_train[phase])
-        experiment['accuracies'].append(get_accuracies())
-        experiment['predictions'].append(get_predictions())
-        step += 1
-        if step > experiment['tolerance']:
+    examples_in_phase = y_train[phase].shape[0]
+    assert(not validate(phase))
+    while True:
+        model.fit(x_train[phase][i % examples_in_phase:i % examples_in_phase + 1],
+                  y_train[phase][i % examples_in_phase:i % examples_in_phase + 1])
+        if not (i % experiment['log_frequency']):
+            experiment['accuracies'].append(get_accuracies())
+            experiment['predictions'].append(get_predictions())
+        i += 1
+        if validate(phase):
+            experiment['phase_length'].append(i)
+            experiment['success'] = True
+            break
+        elif i > experiment['tolerance']:
             experiment['success'] = False
             break
-    if experiment['success']:
-        experiment['phase_length'].append(step)
-    else:
+    if not experiment['success']:
         break
 
 # save results
 assert(not os.path.isfile(experiment['outfile']))
+experiment['timestamp'] = datetime.datetime.now(datetime.timezone.utc).astimezone().isoformat()
 with open(experiment['outfile'], 'w') as outfile:
     json.dump(experiment, outfile, sort_keys=True)

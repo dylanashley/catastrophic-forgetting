@@ -18,9 +18,10 @@ for DATASET in 'mnist' 'fashion_mnist'; do
 for FOLDS in '10'; do
 for VALIDATION_FOLD in `seq 0 9`; do
 TEST_FOLD=$(((VALIDATION_FOLD + 1) % 10))
-for PHASES in '01:23:45:67:89:0123456789' '0123456789'; do
+for PHASES in '01:2:012:3:0123:4:01234'; do
+for LOG_FREQUENCY in '100'; do
 for CRITERIA in '0.95'; do
-for TOLERANCE in '100'; do
+for TOLERANCE in '1000'; do
 for ARCHITECTURE in '100' '50:50'; do
 for SEED in `seq 0 2`; do
 for LR in '1e-1' '1e-2' '1e-3' '1e-4' '1e-5'; do
@@ -30,6 +31,7 @@ for LR in '1e-1' '1e-2' '1e-3' '1e-4' '1e-5'; do
               "$VALIDATION_FOLD"
               "$TEST_FOLD"
               "$PHASES"
+              "$LOG_FREQUENCY"
               "$CRITERIA"
               "$TOLERANCE"
               "$ARCHITECTURE"
@@ -47,6 +49,7 @@ for LR in '1e-1' '1e-2' '1e-3' '1e-4' '1e-5'; do
               "$VALIDATION_FOLD"
               "$TEST_FOLD"
               "$PHASES"
+              "$LOG_FREQUENCY"
               "$CRITERIA"
               "$TOLERANCE"
               "$ARCHITECTURE"
@@ -65,6 +68,7 @@ for LR in '1e-1' '1e-2' '1e-3' '1e-4' '1e-5'; do
               "$VALIDATION_FOLD"
               "$TEST_FOLD"
               "$PHASES"
+              "$LOG_FREQUENCY"
               "$CRITERIA"
               "$TOLERANCE"
               "$ARCHITECTURE"
@@ -77,6 +81,7 @@ for LR in '1e-1' '1e-2' '1e-3' '1e-4' '1e-5'; do
         echo 'python '"$SCRIPT"' '"$OUTFILE"' '"${ARGS[@]}" >> tasks.sh
     done
     done
+done
 done
 done
 done
