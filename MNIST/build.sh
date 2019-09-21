@@ -14,14 +14,14 @@ if [ "$#" -gt "0" ]
 TASKS_PREFIX='tasks_'
 rm "$TASKS_PREFIX"*.sh 2>/dev/null
 rm tasks.sh 2>/dev/null
-for DATASET in 'mnist' 'fashion_mnist'; do
+for DATASET in 'mnist'; do
 for FOLDS in '10'; do
 for VALIDATION_FOLD in `seq 0 9`; do
 TEST_FOLD=$(((VALIDATION_FOLD + 1) % 10))
 for PHASES in '01:2:012:3:0123:4:01234'; do
 for LOG_FREQUENCY in '100'; do
 for CRITERIA in '0.95'; do
-for TOLERANCE in '1000'; do
+for TOLERANCE in '2500'; do
 for ARCHITECTURE in '100' '50:50'; do
 for SEED in `seq 0 2`; do
 for LR in '1e-1' '1e-2' '1e-3' '1e-4' '1e-5'; do
