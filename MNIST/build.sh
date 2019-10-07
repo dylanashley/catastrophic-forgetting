@@ -50,6 +50,24 @@ for TEST_FOLDS in `seq 0 9`; do
 
         for LR in '1e-1' '1e-2' '1e-3' '1e-4' '1e-5'; do
             for MOMENTUM in '0.0' '0.75' '0.9' '0.999'; do
+                # OUTFILE="$I"'.json'
+                # I=$((I + 1))
+                # ARGS=("--outfile=$OUTFILE"
+                #       "--dataset=$DATASET"
+                #       "--fold-count=$FOLD_COUNT"
+                #       "--train-folds=$TRAIN_FOLDS"
+                #       "--test-folds=$TEST_FOLDS"
+                #       "--phases=$PHASES"
+                #       "--log-frequency=$LOG_FREQUENCY"
+                #       "--architecture=$ARCHITECTURE"
+                #       "--seed=$SEED"
+                #       '--criteria=steps'
+                #       '--steps=2000'
+                #       '--optimizer=sgd'
+                #       "--lr=$LR"
+                #       "--momentum=$MOMENTUM")
+                # echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
+
                 OUTFILE="$I"'.json'
                 I=$((I + 1))
                 ARGS=("--outfile=$OUTFILE"
@@ -62,54 +80,72 @@ for TEST_FOLDS in `seq 0 9`; do
                       "--architecture=$ARCHITECTURE"
                       "--seed=$SEED"
                       '--criteria=steps'
-                      '--steps=2000'
+                      '--steps=10000'
                       '--optimizer=sgd'
                       "--lr=$LR"
                       "--momentum=$MOMENTUM")
                 echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
 
-                OUTFILE="$I"'.json'
-                I=$((I + 1))
-                ARGS=("--outfile=$OUTFILE"
-                      "--dataset=$DATASET"
-                      "--fold-count=$FOLD_COUNT"
-                      "--train-folds=$TRAIN_FOLDS"
-                      "--test-folds=$TEST_FOLDS"
-                      "--phases=$PHASES"
-                      "--log-frequency=$LOG_FREQUENCY"
-                      "--architecture=$ARCHITECTURE"
-                      "--seed=$SEED"
-                      '--criteria=online'
-                      '--required-accuracy=0.9'
-                      '--tolerance=2000'
-                      '--minimum-steps=30'
-                      '--optimizer=sgd'
-                      "--lr=$LR"
-                      "--momentum=$MOMENTUM")
-                echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
+                # OUTFILE="$I"'.json'
+                # I=$((I + 1))
+                # ARGS=("--outfile=$OUTFILE"
+                #       "--dataset=$DATASET"
+                #       "--fold-count=$FOLD_COUNT"
+                #       "--train-folds=$TRAIN_FOLDS"
+                #       "--test-folds=$TEST_FOLDS"
+                #       "--phases=$PHASES"
+                #       "--log-frequency=$LOG_FREQUENCY"
+                #       "--architecture=$ARCHITECTURE"
+                #       "--seed=$SEED"
+                #       '--criteria=online'
+                #       '--required-accuracy=0.9'
+                #       '--tolerance=2000'
+                #       '--minimum-steps=30'
+                #       '--optimizer=sgd'
+                #       "--lr=$LR"
+                #       "--momentum=$MOMENTUM")
+                # echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
 
-                OUTFILE="$I"'.json'
-                I=$((I + 1))
-                ARGS=("--outfile=$OUTFILE"
-                      "--dataset=$DATASET"
-                      "--fold-count=$FOLD_COUNT"
-                      "--train-folds=$TRAIN_FOLDS"
-                      "--test-folds=$TEST_FOLDS"
-                      "--phases=$PHASES"
-                      "--log-frequency=$LOG_FREQUENCY"
-                      "--architecture=$ARCHITECTURE"
-                      "--seed=$SEED"
-                      '--criteria=online'
-                      '--required-accuracy=0.9'
-                      '--tolerance=2000'
-                      '--minimum-steps=100'
-                      '--optimizer=sgd'
-                      "--lr=$LR"
-                      "--momentum=$MOMENTUM")
-                echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
+                # OUTFILE="$I"'.json'
+                # I=$((I + 1))
+                # ARGS=("--outfile=$OUTFILE"
+                #       "--dataset=$DATASET"
+                #       "--fold-count=$FOLD_COUNT"
+                #       "--train-folds=$TRAIN_FOLDS"
+                #       "--test-folds=$TEST_FOLDS"
+                #       "--phases=$PHASES"
+                #       "--log-frequency=$LOG_FREQUENCY"
+                #       "--architecture=$ARCHITECTURE"
+                #       "--seed=$SEED"
+                #       '--criteria=online'
+                #       '--required-accuracy=0.9'
+                #       '--tolerance=2000'
+                #       '--minimum-steps=100'
+                #       '--optimizer=sgd'
+                #       "--lr=$LR"
+                #       "--momentum=$MOMENTUM")
+                # echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
             done
 
             for RHO in '0.9' '0.999' '0.99999'; do
+                # OUTFILE="$I"'.json'
+                # I=$((I + 1))
+                # ARGS=("--outfile=$OUTFILE"
+                #       "--dataset=$DATASET"
+                #       "--fold-count=$FOLD_COUNT"
+                #       "--train-folds=$TRAIN_FOLDS"
+                #       "--test-folds=$TEST_FOLDS"
+                #       "--phases=$PHASES"
+                #       "--log-frequency=$LOG_FREQUENCY"
+                #       "--architecture=$ARCHITECTURE"
+                #       "--seed=$SEED"
+                #       '--criteria=steps'
+                #       '--steps=2000'
+                #       '--optimizer=rms'
+                #       "--lr=$LR"
+                #       "--rho=$RHO")
+                # echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
+
                 OUTFILE="$I"'.json'
                 I=$((I + 1))
                 ARGS=("--outfile=$OUTFILE"
@@ -122,55 +158,74 @@ for TEST_FOLDS in `seq 0 9`; do
                       "--architecture=$ARCHITECTURE"
                       "--seed=$SEED"
                       '--criteria=steps'
-                      '--steps=2000'
+                      '--steps=10000'
                       '--optimizer=rms'
                       "--lr=$LR"
                       "--rho=$RHO")
                 echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
 
-                OUTFILE="$I"'.json'
-                I=$((I + 1))
-                ARGS=("--outfile=$OUTFILE"
-                      "--dataset=$DATASET"
-                      "--fold-count=$FOLD_COUNT"
-                      "--train-folds=$TRAIN_FOLDS"
-                      "--test-folds=$TEST_FOLDS"
-                      "--phases=$PHASES"
-                      "--log-frequency=$LOG_FREQUENCY"
-                      "--architecture=$ARCHITECTURE"
-                      "--seed=$SEED"
-                      '--criteria=online'
-                      '--required-accuracy=0.9'
-                      '--tolerance=2000'
-                      '--minimum-steps=30'
-                      '--optimizer=rms'
-                      "--lr=$LR"
-                      "--rho=$RHO")
-                echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
+                # OUTFILE="$I"'.json'
+                # I=$((I + 1))
+                # ARGS=("--outfile=$OUTFILE"
+                #       "--dataset=$DATASET"
+                #       "--fold-count=$FOLD_COUNT"
+                #       "--train-folds=$TRAIN_FOLDS"
+                #       "--test-folds=$TEST_FOLDS"
+                #       "--phases=$PHASES"
+                #       "--log-frequency=$LOG_FREQUENCY"
+                #       "--architecture=$ARCHITECTURE"
+                #       "--seed=$SEED"
+                #       '--criteria=online'
+                #       '--required-accuracy=0.9'
+                #       '--tolerance=2000'
+                #       '--minimum-steps=30'
+                #       '--optimizer=rms'
+                #       "--lr=$LR"
+                #       "--rho=$RHO")
+                # echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
 
-                OUTFILE="$I"'.json'
-                I=$((I + 1))
-                ARGS=("--outfile=$OUTFILE"
-                      "--dataset=$DATASET"
-                      "--fold-count=$FOLD_COUNT"
-                      "--train-folds=$TRAIN_FOLDS"
-                      "--test-folds=$TEST_FOLDS"
-                      "--phases=$PHASES"
-                      "--log-frequency=$LOG_FREQUENCY"
-                      "--architecture=$ARCHITECTURE"
-                      "--seed=$SEED"
-                      '--criteria=online'
-                      '--required-accuracy=0.9'
-                      '--tolerance=2000'
-                      '--minimum-steps=100'
-                      '--optimizer=rms'
-                      "--lr=$LR"
-                      "--rho=$RHO")
-                echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
+                # OUTFILE="$I"'.json'
+                # I=$((I + 1))
+                # ARGS=("--outfile=$OUTFILE"
+                #       "--dataset=$DATASET"
+                #       "--fold-count=$FOLD_COUNT"
+                #       "--train-folds=$TRAIN_FOLDS"
+                #       "--test-folds=$TEST_FOLDS"
+                #       "--phases=$PHASES"
+                #       "--log-frequency=$LOG_FREQUENCY"
+                #       "--architecture=$ARCHITECTURE"
+                #       "--seed=$SEED"
+                #       '--criteria=online'
+                #       '--required-accuracy=0.9'
+                #       '--tolerance=2000'
+                #       '--minimum-steps=100'
+                #       '--optimizer=rms'
+                #       "--lr=$LR"
+                #       "--rho=$RHO")
+                # echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
             done
 
             for BETA_1 in '0.75' '0.9' '0.999'; do
                 for BETA_2 in '0.9' '0.999' '0.99999'; do
+                    # OUTFILE="$I"'.json'
+                    # I=$((I + 1))
+                    # ARGS=("--outfile=$OUTFILE"
+                    #       "--dataset=$DATASET"
+                    #       "--fold-count=$FOLD_COUNT"
+                    #       "--train-folds=$TRAIN_FOLDS"
+                    #       "--test-folds=$TEST_FOLDS"
+                    #       "--phases=$PHASES"
+                    #       "--log-frequency=$LOG_FREQUENCY"
+                    #       "--architecture=$ARCHITECTURE"
+                    #       "--seed=$SEED"
+                    #       '--criteria=steps'
+                    #       '--steps=2000'
+                    #       '--optimizer=adam'
+                    #       "--lr=$LR"
+                    #       "--beta-1=$BETA_1"
+                    #       "--beta-2=$BETA_2")
+                    # echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
+
                     OUTFILE="$I"'.json'
                     I=$((I + 1))
                     ARGS=("--outfile=$OUTFILE"
@@ -183,54 +238,54 @@ for TEST_FOLDS in `seq 0 9`; do
                           "--architecture=$ARCHITECTURE"
                           "--seed=$SEED"
                           '--criteria=steps'
-                          '--steps=2000'
+                          '--steps=10000'
                           '--optimizer=adam'
                           "--lr=$LR"
                           "--beta-1=$BETA_1"
                           "--beta-2=$BETA_2")
                     echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
 
-                    OUTFILE="$I"'.json'
-                    I=$((I + 1))
-                    ARGS=("--outfile=$OUTFILE"
-                          "--dataset=$DATASET"
-                          "--fold-count=$FOLD_COUNT"
-                          "--train-folds=$TRAIN_FOLDS"
-                          "--test-folds=$TEST_FOLDS"
-                          "--phases=$PHASES"
-                          "--log-frequency=$LOG_FREQUENCY"
-                          "--architecture=$ARCHITECTURE"
-                          "--seed=$SEED"
-                          '--criteria=online'
-                          '--required-accuracy=0.9'
-                          '--tolerance=2000'
-                          '--minimum-steps=30'
-                          '--optimizer=adam'
-                          "--lr=$LR"
-                          "--beta-1=$BETA_1"
-                          "--beta-2=$BETA_2")
-                    echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
+                    # OUTFILE="$I"'.json'
+                    # I=$((I + 1))
+                    # ARGS=("--outfile=$OUTFILE"
+                    #       "--dataset=$DATASET"
+                    #       "--fold-count=$FOLD_COUNT"
+                    #       "--train-folds=$TRAIN_FOLDS"
+                    #       "--test-folds=$TEST_FOLDS"
+                    #       "--phases=$PHASES"
+                    #       "--log-frequency=$LOG_FREQUENCY"
+                    #       "--architecture=$ARCHITECTURE"
+                    #       "--seed=$SEED"
+                    #       '--criteria=online'
+                    #       '--required-accuracy=0.9'
+                    #       '--tolerance=2000'
+                    #       '--minimum-steps=30'
+                    #       '--optimizer=adam'
+                    #       "--lr=$LR"
+                    #       "--beta-1=$BETA_1"
+                    #       "--beta-2=$BETA_2")
+                    # echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
 
-                    OUTFILE="$I"'.json'
-                    I=$((I + 1))
-                    ARGS=("--outfile=$OUTFILE"
-                          "--dataset=$DATASET"
-                          "--fold-count=$FOLD_COUNT"
-                          "--train-folds=$TRAIN_FOLDS"
-                          "--test-folds=$TEST_FOLDS"
-                          "--phases=$PHASES"
-                          "--log-frequency=$LOG_FREQUENCY"
-                          "--architecture=$ARCHITECTURE"
-                          "--seed=$SEED"
-                          '--criteria=online'
-                          '--required-accuracy=0.9'
-                          '--tolerance=2000'
-                          '--minimum-steps=100'
-                          '--optimizer=adam'
-                          "--lr=$LR"
-                          "--beta-1=$BETA_1"
-                          "--beta-2=$BETA_2")
-                    echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
+                    # OUTFILE="$I"'.json'
+                    # I=$((I + 1))
+                    # ARGS=("--outfile=$OUTFILE"
+                    #       "--dataset=$DATASET"
+                    #       "--fold-count=$FOLD_COUNT"
+                    #       "--train-folds=$TRAIN_FOLDS"
+                    #       "--test-folds=$TEST_FOLDS"
+                    #       "--phases=$PHASES"
+                    #       "--log-frequency=$LOG_FREQUENCY"
+                    #       "--architecture=$ARCHITECTURE"
+                    #       "--seed=$SEED"
+                    #       '--criteria=online'
+                    #       '--required-accuracy=0.9'
+                    #       '--tolerance=2000'
+                    #       '--minimum-steps=100'
+                    #       '--optimizer=adam'
+                    #       "--lr=$LR"
+                    #       "--beta-1=$BETA_1"
+                    #       "--beta-2=$BETA_2")
+                    # echo 'python '"$SCRIPT"' '"${ARGS[@]}" >> tasks.sh
                 done
             done
         done
