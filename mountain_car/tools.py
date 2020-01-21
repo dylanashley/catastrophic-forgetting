@@ -25,7 +25,8 @@ hyperparameter_labels = [
     'lr',
     'momentum',
     'optimizer',
-    'rho']
+    'rho',
+    'loss']
 
 Key = collections.namedtuple('Key', hyperparameter_labels)
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT=$(dirname "$0")'/run.py'
-TASKS_PER_FILE=50
+TASKS_PER_FILE=100
 
 # assert command line arguments valid
 if [ "$#" -gt "0" ]
@@ -16,9 +16,7 @@ rm "$TASKS_PREFIX"*.sh 2>/dev/null
 rm tasks.sh 2>/dev/null
 I=0
 NUM_EPISODES=1000
-LOSS='TD'
 for ENV_SEED in `seq 0 29`; do
-    NETWORK_SEED=$(((1<<16) - 1 - ENV_SEED))
 
     OPTIMIZER='constant'
     OUTFILE="$I"'.json'
@@ -28,40 +26,13 @@ for ENV_SEED in `seq 0 29`; do
           "--env-seed=$ENV_SEED"
           "--optimizer=$OPTIMIZER")
     echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
-    for LR in '1e-1' '1e-2' '1e-3' '1e-4' '1e-5' '1e-6'; do
-        for MOMENTUM in '0.0' '0.9'; do
-            OPTIMIZER='sgd'
-            OUTFILE="$I"'.json'
-            I=$((I + 1))
-            ARGS=("--outfile=$OUTFILE"
-                  "--num-episodes=$NUM_EPISODES"
-                  "--env-seed=$ENV_SEED"
-                  "--network-seed=$NETWORK_SEED"
-                  "--optimizer=$OPTIMIZER"
-                  "--lr=$LR"
-                  "--momentum=$MOMENTUM"
-                  "--loss=$LOSS")
-            echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
-        done
 
-        for RHO in '0.9'; do
-            OPTIMIZER='rms'
-            OUTFILE="$I"'.json'
-            I=$((I + 1))
-            ARGS=("--outfile=$OUTFILE"
-                  "--num-episodes=$NUM_EPISODES"
-                  "--env-seed=$ENV_SEED"
-                  "--network-seed=$NETWORK_SEED"
-                  "--optimizer=$OPTIMIZER"
-                  "--lr=$LR"
-                  "--rho=$RHO"
-                  "--loss=$LOSS")
-            echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
-        done
+    NETWORK_SEED=$(((1<<16) - 1 - ENV_SEED))
 
-        for BETA_1 in '0.9'; do
-            for BETA_2 in '0.999'; do
-                OPTIMIZER='adam'
+    for LOSS in 'squared_error' 'TD'; do
+        for LR in '1e-1' '1e-2' '1e-3' '1e-4' '1e-5' '1e-6'; do
+            for MOMENTUM in '0.0' '0.9'; do
+                OPTIMIZER='sgd'
                 OUTFILE="$I"'.json'
                 I=$((I + 1))
                 ARGS=("--outfile=$OUTFILE"
@@ -70,10 +41,42 @@ for ENV_SEED in `seq 0 29`; do
                       "--network-seed=$NETWORK_SEED"
                       "--optimizer=$OPTIMIZER"
                       "--lr=$LR"
-                      "--beta-1=$BETA_1"
-                      "--beta-2=$BETA_2"
+                      "--momentum=$MOMENTUM"
                       "--loss=$LOSS")
                 echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+            done
+
+            for RHO in '0.9'; do
+                OPTIMIZER='rms'
+                OUTFILE="$I"'.json'
+                I=$((I + 1))
+                ARGS=("--outfile=$OUTFILE"
+                      "--num-episodes=$NUM_EPISODES"
+                      "--env-seed=$ENV_SEED"
+                      "--network-seed=$NETWORK_SEED"
+                      "--optimizer=$OPTIMIZER"
+                      "--lr=$LR"
+                      "--rho=$RHO"
+                      "--loss=$LOSS")
+                echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+            done
+
+            for BETA_1 in '0.9'; do
+                for BETA_2 in '0.999'; do
+                    OPTIMIZER='adam'
+                    OUTFILE="$I"'.json'
+                    I=$((I + 1))
+                    ARGS=("--outfile=$OUTFILE"
+                          "--num-episodes=$NUM_EPISODES"
+                          "--env-seed=$ENV_SEED"
+                          "--network-seed=$NETWORK_SEED"
+                          "--optimizer=$OPTIMIZER"
+                          "--lr=$LR"
+                          "--beta-1=$BETA_1"
+                          "--beta-2=$BETA_2"
+                          "--loss=$LOSS")
+                    echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+                done
             done
         done
     done

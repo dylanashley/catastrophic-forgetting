@@ -220,6 +220,8 @@ def test_pairwise_interference():
             return_ = interference_y_test[i]
             next_position, next_velocity = MountainCarPrediction.get_next_observation((position,
                                                                                        velocity))
+            next_return = MountainCarPrediction.get_return((next_position,
+                                                            next_velocity))
             if experiment['loss'] == 'squared_error':
                 x_test[0] = position
                 x_test[1] = velocity
@@ -333,7 +335,7 @@ for episode in range(experiment['num_episodes']):
     if experiment['optimizer'] != 'constant':
         experiment['pairwise_interference'].append(test_pairwise_interference())
         experiment['activation_overlap'].append(test_activation_overlap())
-print(experiment['accuracy'][0], experiment['accuracy'][-1])
+
 # save results
 assert(not os.path.isfile(experiment['outfile']))
 experiment['end_time'] = datetime.datetime.now(datetime.timezone.utc).astimezone().isoformat()
