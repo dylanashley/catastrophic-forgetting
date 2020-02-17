@@ -5,6 +5,12 @@ import json
 import numpy as np
 import pandas as pd
 
+# prevent recursive imports
+MAX_POSITION = 0.6
+MAX_VELOCITY = 0.07
+MIN_POSITION = - 1.2
+MIN_VELOCITY = - MAX_VELOCITY
+
 misc_labels = [
     'end_time',
     'num_episodes',
@@ -72,3 +78,9 @@ def scale(value, start_min, start_max, end_min, end_max):
     [start_min, start_max] to [end_min, end_max].
     """
     return (end_min + (end_max - end_min) * (value - start_min) / (start_max - start_min))
+
+def scale_position(value):
+    return scale(value, MIN_POSITION, MAX_POSITION, - 1, 1)
+
+def scale_velocity(value):
+    return scale(value, MIN_VELOCITY, MAX_VELOCITY, - 1, 1)

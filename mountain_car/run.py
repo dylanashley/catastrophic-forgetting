@@ -1,15 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from envs import MountainCarPrediction
-from tools import *
 import argparse
 import datetime
-import json
-import numpy as np
 import os
 import sys
-import torch
 import warnings
 
 # parse args
@@ -118,8 +113,13 @@ if experiment['optimizer'] == 'rms':
 # args ok; start experiment
 experiment['start_time'] = datetime.datetime.now(datetime.timezone.utc).astimezone().isoformat()
 
+from envs import MountainCarPrediction
+from tools import *
+import json
+import numpy as np
+import torch
+
 # setup libraries
-warnings.filterwarnings('ignore')
 if experiment['network_seed'] is not None:
     torch.manual_seed(experiment['network_seed'])
     torch.backends.cudnn.deterministic = True
@@ -146,10 +146,10 @@ if experiment['optimizer'] == 'constant':
     model = ConstantPredictor()
 else:
     linear1 = torch.nn.Linear(2, 50)
-    torch.nn.init.normal_(linear1.weight, std=0.05)
+    torch.nn.init.xavier_normal_(linear1.weight)
     relu1 = torch.nn.ReLU()
     linear2 = torch.nn.Linear(50, 1)
-    torch.nn.init.normal_(linear2.weight, std=0.05)
+    torch.nn.init.xavier_normal_(linear2.weight)
     model = torch.nn.Sequential(
         linear1,
         relu1,
@@ -196,9 +196,8 @@ interference_y_test = torch.tensor(interference_test_data['y'], dtype=dtype)
 # prepare buffers to store results
 experiment['steps'] = list()
 experiment['accuracy'] = list()
-if experiment['optimizer'] != 'constant':
-    experiment['pairwise_interference'] = list()
-    experiment['activation_overlap'] = list()
+experiment['pairwise_interference'] = None if experiment['optimizer'] == 'constant' else list()
+experiment['activation_overlap'] = None if experiment['optimizer'] == 'constant' else list()
 
 # prepare environment
 if experiment['env_seed'] is None:
@@ -208,9 +207,10 @@ else:
         generator=np.random.RandomState(experiment['env_seed']))
 
 # build helper function to compute test error and interference
+@torch.no_grad()
 def test():
-    with torch.no_grad():
-        return ((test_data_y - model(test_data_x)) ** 2).mean().sqrt().item()
+    return ((test_data_y - model(test_data_x)) ** 2).mean().sqrt().item()
+
 def test_pairwise_interference():
     grads = list()
     for i in range(len(interference_x_test)):
@@ -218,10 +218,14 @@ def test_pairwise_interference():
             position = interference_x_test[i][0]
             velocity = interference_x_test[i][1]
             return_ = interference_y_test[i]
-            next_position, next_velocity = MountainCarPrediction.get_next_observation((position,
-                                                                                       velocity))
-            next_return = MountainCarPrediction.get_return((next_position,
-                                                            next_velocity))
+            next_position, next_velocity = MountainCarPrediction.get_next_observation(
+                (position, velocity))
+            next_return = MountainCarPrediction.get_return(
+                (next_position, next_velocity))
+            position = scale_position(position)
+            velocity = scale_velocity(velocity)
+            next_position = scale_position(next_position)
+            next_velocity = scale_velocity(next_velocity)
             if experiment['loss'] == 'squared_error':
                 x_test[0] = position
                 x_test[1] = velocity
@@ -247,23 +251,18 @@ def test_pairwise_interference():
             count += 1
             mean += (value - mean) / count
     return mean
+
+@torch.no_grad()
 def test_activation_overlap():
     activations = list()
-    with torch.no_grad():
-        for i in range(len(interference_x_test)):
-            activations.append((linear1.forward(interference_x_test[i]) > 0).numpy())
+    for i in range(len(interference_x_test)):
+        x[0] = scale_position(interference_x_test[i][0])
+        x[1] = scale_velocity(interference_x_test[i][1])
+        activations.append((linear1.forward(x) > 0).numpy())
     mean, count = 0, 0
     for i in range(len(activations)):
         for j in range(i, len(activations)):
             value = np.mean(np.logical_and(activations[i], activations[j]))
-            # print('EPISODE: {0:3}, i: {1:2}, j: {2:2}, ACTIVATIONS[i]: {3}, ACTIVATIONS[j]: {4}, ACTIVATIONS[i & j]: {5}, MEAN: {6}'.format(
-            #     episode,
-            #     i,
-            #     j,
-            #     ''.join(['1' if i else '0' for i in activations[i]]),
-            #     ''.join(['1' if i else '0' for i in activations[j]]),
-            #     ''.join(['1' if i else '0' for i in np.logical_and(activations[i], activations[j])]),
-            #     value))
             count += 1
             mean += (value - mean) / count
     return mean
@@ -290,15 +289,15 @@ for episode in range(experiment['num_episodes']):
 
     # train network online on episode
     for i in range(len(returns)):
-        position = observations[i][0]
-        velocity = observations[i][1]
+        position = scale_position(observations[i][0])
+        velocity = scale_velocity(observations[i][1])
         return_ = returns[i]
         try:
-            next_position = observations[i + 1][0]
-            next_velocity = observations[i + 1][1]
+            next_position = scale_position(observations[i + 1][0])
+            next_velocity = scale_velocity(observations[i + 1][1])
         except IndexError:
-            next_position = terminal_observation[0]
-            next_velocity = terminal_observation[1]
+            next_position = scale_position(terminal_observation[0])
+            next_velocity = scale_velocity(terminal_observation[1])
         try:
             next_return = returns[i + 1]
         except IndexError:
@@ -319,14 +318,6 @@ for episode in range(experiment['num_episodes']):
                     x[0] = position
                     x[1] = velocity
             y_pred = model(x)
-            # with torch.no_grad():
-            #     print('EPISODE: {0:3}, position: {1:7.4f}, velocity: {2:7.4f}, y: {3:9.4f}, y_pred: {4:9.4f}, loss: {5:10.4f}'.format(
-            #         episode,
-            #         x[0].item(),
-            #         x[1].item(),
-            #         y.item(),
-            #         y_pred.item(),
-            #         loss_fn(y_pred, y).item()))
             loss = loss_fn(y_pred, y)
             optimizer.zero_grad()
             loss.backward()

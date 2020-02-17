@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT=$(dirname "$0")'/run.py'
-TASKS_PER_FILE=100
+TASKS_PER_FILE=60
 
 # assert command line arguments valid
 if [ "$#" -gt "0" ]
@@ -16,7 +16,7 @@ rm "$TASKS_PREFIX"*.sh 2>/dev/null
 rm tasks.sh 2>/dev/null
 I=0
 NUM_EPISODES=1000
-for ENV_SEED in `seq 0 29`; do
+for ENV_SEED in `seq 0 9`; do
 
     OPTIMIZER='constant'
     OUTFILE="$I"'.json'
