@@ -57,12 +57,6 @@ parser.add_argument(
          'required',
     required=True)
 parser.add_argument(
-    '--architecture',
-    type=str,
-    help='colon separated architecture of the hidden layers of the network; '
-         'required',
-    required=True)
-parser.add_argument(
     '--init-seed',
     type=int,
     help='seed for network initialization; '
@@ -114,7 +108,7 @@ parser.add_argument(
     default=None)
 parser.add_argument(
     '--optimizer',
-    choices=['sgd', 'adam', 'rms', 'nmom'],
+    choices=['sgd', 'adam', 'rms'],
     help='optimization algorithm to use to train the network; '
          'required',
     required=True)
@@ -226,28 +220,30 @@ if experiment['optimizer'] == 'rms':
     assert(experiment['beta_1'] is None)
     assert(experiment['beta_2'] is None)
     assert(experiment['rho'] is not None)
-if experiment['optimizer'] == 'nmom':
-    assert(experiment['momentum'] is not None)
-    assert(experiment['beta_1'] is None)
-    assert(experiment['beta_2'] is None)
-    assert(experiment['rho'] is None)
 
 # check and process all other arguments
 assert(0 < experiment['log_frequency'])
-architecture = [int(i) for i in experiment['architecture'].split(':')]
-assert(all([0 < i for i in architecture]))
 
 # args ok; start experiment
 experiment['start_time'] = datetime.datetime.now(datetime.timezone.utc).astimezone().isoformat()
 
+# stop the annoying deprecation warnings when loading tensorflow
+warnings.filterwarnings('ignore')
+
 import json
 import numpy as np
-import optimizers
 import tensorflow as tf
+import torch
 
 # setup libraries
-tf.logging.set_verbosity('FATAL')
-warnings.filterwarnings('ignore')
+try:
+    tf.logging.set_verbosity('FATAL')
+except AttributeError:
+    pass
+if experiment['init_seed'] is not None:
+    torch.manual_seed(experiment['init_seed'])
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 # load dataset and masks
 if experiment['dataset'] == 'mnist':
@@ -287,40 +283,75 @@ def shuffle_jointly(x, y):
     shuffle_generator.shuffle(z)
     x, y = zip(* z)
     return x, y
-x_train = [raw_x_train[mask, ...] for mask in train_masks]
-y_train = [raw_y_train[mask, ...] - min(experiment['digits']) for mask in train_masks]
+x_train = [raw_x_train[mask, ...]
+           for mask in train_masks]
+y_train = [raw_y_train[mask, ...] - min(experiment['digits'])
+           for mask in train_masks]
 for i in range(len(x_train)):
     x_train[i], y_train[i] = shuffle_jointly(x_train[i], y_train[i])
-    x_train[i] = np.array(x_train[i])
-    y_train[i] = np.array(y_train[i])
+    x_train[i] = torch.tensor(x_train[i], dtype=torch.float).flatten(start_dim=1)
+    y_train[i] = torch.tensor(y_train[i], dtype=torch.int)
 if experiment['test_folds'] is not None:
-    x_test = [raw_x_train[mask, ...] for mask in test_masks]
-    y_test = [raw_y_train[mask, ...] - min(experiment['digits']) for mask in test_masks]
+    x_test = [raw_x_train[mask, ...]
+              for mask in test_masks]
+    y_test = [raw_y_train[mask, ...] - min(experiment['digits'])
+              for mask in test_masks]
+    mask = np.zeros(len(y_test[-1]), dtype=bool)
+    digit_counts = np.zeros(max(raw_y_train))
+    for i, digit in enumerate(y_test[-1]):
+        if (digit in experiment['digits']) and (digit_counts[digit] < 10):
+            mask[i] = True
+            digit_counts[digit] += 1
+    x_ten_test = x_test[-1][mask, ...]  # smaller dataset for second order tests
+    y_ten_test = y_test[-1][mask, ...]
+    for i in range(len(x_test)):
+        x_test[i] = torch.tensor(x_test[i], dtype=torch.float).flatten(start_dim=1)
+        y_test[i] = torch.tensor(y_test[i], dtype=torch.int)
+    x_ten_test = torch.tensor(x_ten_test, dtype=torch.float).flatten(start_dim=1)
+    y_ten_test = torch.tensor(y_ten_test, dtype=torch.int)
 if experiment['validation_folds'] is not None:
     x_validation = [raw_x_train[mask, ...]
                     for mask in validation_masks]
     y_validation = [raw_y_train[mask, ...] - min(experiment['digits'])
                     for mask in validation_masks]
+    for i in range(len(x_validation)):
+        x_validation[i] = torch.tensor(x_validation[i], dtype=torch.float).flatten(start_dim=1)
+        y_validation[i] = torch.tensor(y_validation[i], dtype=torch.int)
 
 # build model
-layers = list()
-layers.append(tf.keras.layers.Flatten(input_shape=(28, 28)))
-if experiment['init_seed'] is None:
-    initializer_generator = np.random.RandomState()
+dtype = torch.float
+linear1 = torch.nn.Linear(28 * 28, 100)
+torch.nn.init.normal_(linear1.weight, std=0.05)
+relu1 = torch.nn.ReLU()
+linear2 = torch.nn.Linear(100, len(experiment['digits']))
+torch.nn.init.normal_(linear2.weight, std=0.05)
+model = torch.nn.Sequential(
+    linear1,
+    relu1,
+    linear2
+)
+loss_fn = torch.nn.CrossEntropyLoss()
+
+# prepare optimizer
+if experiment['optimizer'] == 'sgd':
+    optimizer = torch.optim.SGD(
+        model.parameters(),
+        lr=experiment['lr'],
+        momentum=experiment['momentum']
+    )
+elif experiment['optimizer'] == 'rms':
+    optimizer = torch.optim.RMSprop(
+        model.parameters(),
+        lr=experiment['lr'],
+        alpha=experiment['rho']
+    )
 else:
-    initializer_generator = np.random.RandomState(experiment['init_seed'])
-for hidden_units in architecture:
-    layers.append(tf.keras.layers.Dense(
-        hidden_units,
-        activation=tf.nn.relu,
-        kernel_initializer=tf.keras.initializers.RandomNormal(
-            seed=initializer_generator.randint(2 ** 16 - 1))))
-layers.append(tf.keras.layers.Dense(
-    len(experiment['digits']),
-    activation=tf.nn.softmax,
-    kernel_initializer=tf.keras.initializers.RandomNormal(
-        seed=initializer_generator.randint(2 ** 16 - 1))))
-model = tf.keras.models.Sequential(layers)
+    assert(experiment['optimizer'] == 'adam')
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=experiment['lr'],
+        betas=(experiment['beta_1'], experiment['beta_2'])
+    )
 
 # prepare buffers to store results
 experiment['success'] = True
@@ -328,44 +359,66 @@ experiment['correct'] = list()
 experiment['phase_length'] = list()
 experiment['accuracies'] = None if experiment['test_folds'] is None else list()
 experiment['predictions'] = None if experiment['test_folds'] is None else list()
+experiment['pairwise_interference'] = None if experiment['test_folds'] is None else list()
+experiment['activation_overlap'] = None if experiment['test_folds'] is None else list()
 
-# prepare optimizer
-if experiment['optimizer'] == 'sgd':
-    optimizer = tf.keras.optimizers.SGD(
-        lr=experiment['lr'],
-        momentum=experiment['momentum'])
-elif experiment['optimizer'] == 'rms':
-    optimizer = tf.keras.optimizers.RMSprop(
-        lr=experiment['lr'],
-        rho=experiment['rho'])
-elif experiment['optimizer'] == 'nmom':
-    optimizer = optimizers.NMOM(
-        lr=experiment['lr'],
-        momentum=experiment['momentum'])
-else:
-    assert(experiment['optimizer'] == 'adam')
-    optimizer = tf.keras.optimizers.Adam(
-        lr=experiment['lr'],
-        beta_1=experiment['beta_1'],
-        beta_2=experiment['beta_2'])
-
-# create helper functions
-def get_accuracies():
+# create helper functions for metrics
+@torch.no_grad()
+def get_accuracies(model):
     rv = list()
     for phase in range(len(x_test)):
-        rv.append(float(model.evaluate(x_test[phase], y_test[phase], verbose=0)[1]))
+        x = x_test[phase]
+        y_pred = model(x).argmax(axis=1)
+        y = y_test[phase]
+        accuracy = (y_pred == y).int().float().mean().item()
+        rv.append(accuracy)
     return rv
-def get_predictions():
-    rv = np.zeros((len(experiment['digits']), len(experiment['digits'])), dtype=float)
-    predictions = np.argmax(model.predict(x_test[-1], verbose=0), axis=1)
+
+@torch.no_grad()
+def get_predictions(model):
+    rv = torch.zeros((len(experiment['digits']), len(experiment['digits'])), dtype=torch.float)
+    predictions = model(x_test[-1]).argmax(axis=1)
     for i in range(len(experiment['digits'])):
         for j in range(len(experiment['digits'])):
-            count = np.sum(np.logical_and(
-                predictions + min(experiment['digits']) == experiment['digits'][i],
-                y_test[-1] + min(experiment['digits']) == experiment['digits'][j]))
-            rv[i, j] = \
-                count / np.sum(y_test[-1] + min(experiment['digits']) == experiment['digits'][j])
+            y_pred = predictions + min(experiment['digits']) == experiment['digits'][i]
+            y = y_test[-1] + min(experiment['digits']) == experiment['digits'][j]
+            rv[i, j] = ((y_pred & y).int().sum().float() / y.sum().float()).item()
     return rv.tolist()
+
+def get_pairwise_interference(model, loss_fn):
+    grads = list()
+    for i in range(len(x_ten_test)):
+        x = x_ten_test[i]
+        y_pred = model(x).double()
+        y = y_ten_test[i].long()
+        loss = loss_fn(y_pred.unsqueeze(0), y.unsqueeze(0))
+        model.zero_grad()
+        loss.backward()
+        with torch.no_grad():
+            grads.append(torch.cat([i.grad.flatten() for i in model.parameters()]).numpy())
+    mean, count = 0, 0
+    for i in range(len(grads)):
+        for j in range(i, len(grads)):
+            value = grads[i].dot(grads[j])
+            value /= np.sqrt(grads[i].dot(grads[i])) * np.sqrt(grads[j].dot(grads[j]))
+            count += 1
+            mean += (value - mean) / count
+    return mean
+
+@torch.no_grad()
+def get_activation_overlap(model):
+    activations = list()
+    for i in range(len(x_ten_test)):
+        activations.append((linear1.forward(x_ten_test[i]) > 0))
+    mean, count = 0, 0
+    for i in range(len(activations)):
+        for j in range(i, len(activations)):
+            value = (activations[i] & activations[j]).int().float().mean().item()
+            count += 1
+            mean += (value - mean) / count
+    return mean
+
+# create helper function for phase transitions
 if experiment['criteria'] == 'steps':
     def phase_over(phase, step, number_correct, steps_since_last_error):
         return step == experiment['steps']
@@ -380,10 +433,6 @@ if experiment['criteria'] == 'online':
             (number_correct / step >= experiment['required_accuracy'])
 
 # run experiment
-model.compile(
-    optimizer=optimizer,
-    loss='sparse_categorical_crossentropy',
-    metrics=['accuracy'])
 warned_about_repeats = False
 for phase in range(len(experiment['phases'])):
     examples_in_phase = y_train[phase].shape[0]
@@ -393,16 +442,21 @@ for phase in range(len(experiment['phases'])):
         if (not warned_about_repeats) and (i > examples_in_phase):
             warnings.warn('sampling examples with replacement')
             warned_about_repeats = True
-        guess = int(np.argmax(
-            model.predict(x_train[phase][i % examples_in_phase:i % examples_in_phase + 1])))
-        correct = bool(guess == y_train[phase][i % examples_in_phase])
-        experiment['correct'].append(correct)
-        model.fit(x_train[phase][i % examples_in_phase:i % examples_in_phase + 1],
-                  y_train[phase][i % examples_in_phase:i % examples_in_phase + 1],
-                  verbose=0)
+        x = x_train[phase][i % examples_in_phase]
+        y_pred = model(x).double()
+        y = y_train[phase][i % examples_in_phase].long()
+        with torch.no_grad():
+            correct = bool(y_pred.argmax() == y)
+            experiment['correct'].append(correct)
+        loss = loss_fn(y_pred.unsqueeze(0), y.unsqueeze(0))
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
         if (experiment['test_folds'] is not None) and (not (i % experiment['log_frequency'])):
-            experiment['accuracies'].append(get_accuracies())
-            experiment['predictions'].append(get_predictions())
+            experiment['accuracies'].append(get_accuracies(model))
+            experiment['predictions'].append(get_predictions(model))
+            experiment['pairwise_interference'].append(get_pairwise_interference(model, loss_fn))
+            experiment['activation_overlap'].append(get_activation_overlap(model))
         i += 1
         if correct:
             j += 1
