@@ -29,13 +29,13 @@ x_counts, _, _, x_map = axmat[0].hist2d(
     x[:, 1],
     bins=[position_bins, velocity_bins],
     vmin=0,
-    cmap='viridis')
+    cmap='gray_r')
 z_counts, _, _, z_map = axmat[1].hist2d(
     z[:, 0],
     z[:, 1],
     bins=[position_bins, velocity_bins],
     vmin=0,
-    cmap='viridis')
+    cmap='gray_r')
 for ax in axmat:
     ax.set_xlabel('Position', labelpad=5)
     ax.set_ylabel('Velocity', labelpad=5)

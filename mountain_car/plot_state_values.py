@@ -25,7 +25,7 @@ for i, velocity in enumerate(velocity_bins):
 
 # create the plot
 fig, ax = plt.subplots(dpi=300, figsize=(6, 4))
-sns.heatmap(return_grid, cmap='viridis', square=True, yticklabels=False, xticklabels=False, ax=ax)
+sns.heatmap(return_grid, cmap='gray', square=True, yticklabels=False, xticklabels=False, ax=ax)
 ax.set_xlabel('Position', labelpad=5)
 ax.set_ylabel('Velocity', labelpad=5)
 ax.set_title('Value of States in Mountain Car Prediction Task', fontsize=10)

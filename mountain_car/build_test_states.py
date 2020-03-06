@@ -16,6 +16,10 @@ parser.add_argument(
     help='npz file to dump states and returns; '
          'will terminate if file already exists')
 parser.add_argument(
+    'env_range',
+    choices=['full', 'classic'],
+    help='range to sample initial position and velocity values for new episodes')
+parser.add_argument(
     'num_steps',
     type=int,
     help='length of trajectory to sample states from')
@@ -58,7 +62,7 @@ env = MountainCarPrediction(generator=generator)
 done = True
 while len(states) < args['num_steps']:
     if done:
-        state = env.reset()
+        state = env.reset(range=args['env_range'])
         done = False
     else:
         state, reward, done = env.step()
@@ -75,7 +79,7 @@ returns = [MountainCarPrediction.get_return(i) for i in sample]
 # get interference interference states if requested
 if args['interference_outfile'] is not None:
     position_bins = np.linspace(MountainCar.MIN_POSITION,
-                                MountainCar.MAX_POSITION,
+                                MountainCar.GOAL_POSITION,
                                 6,
                                 endpoint=False)
     velocity_bins = np.linspace(MountainCar.MIN_VELOCITY,

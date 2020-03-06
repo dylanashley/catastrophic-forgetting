@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 # prevent recursive imports
+GOAL_POSITION = 0.5
 MAX_POSITION = 0.6
 MAX_VELOCITY = 0.07
 MIN_POSITION = - 1.2
@@ -13,6 +14,7 @@ MIN_VELOCITY = - MAX_VELOCITY
 
 misc_labels = [
     'end_time',
+    'env_range',
     'num_episodes',
     'outfile',
     'start_time',
@@ -26,13 +28,16 @@ result_labels = [
     'auc',
     'pairwise_interference']
 hyperparameter_labels = [
+    'approximator',
     'beta_1',
     'beta_2',
+    'lambda_',
+    'loss',
     'lr',
     'momentum',
     'optimizer',
     'rho',
-    'loss']
+    'target_update']
 
 Key = collections.namedtuple('Key', hyperparameter_labels)
 
@@ -80,7 +85,13 @@ def scale(value, start_min, start_max, end_min, end_max):
     return (end_min + (end_max - end_min) * (value - start_min) / (start_max - start_min))
 
 def scale_position(value):
-    return scale(value, MIN_POSITION, MAX_POSITION, - 1, 1)
+    assert(MIN_POSITION <= value <= MAX_POSITION)
+    rv = scale(value, MIN_POSITION, MAX_POSITION, - 1, 1)
+    assert(- 1 <= rv <= 1)
+    return rv
 
 def scale_velocity(value):
-    return scale(value, MIN_VELOCITY, MAX_VELOCITY, - 1, 1)
+    assert(MIN_VELOCITY <= value <= MAX_VELOCITY)
+    rv = scale(value, MIN_VELOCITY, MAX_VELOCITY, - 1, 1)
+    assert(- 1 <= rv <= 1)
+    return rv
