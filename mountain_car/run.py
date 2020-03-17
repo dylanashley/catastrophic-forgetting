@@ -162,6 +162,7 @@ import tile_coding
 import torch
 
 # setup libraries
+torch.set_num_threads(1)
 if experiment['network_seed'] is not None:
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False

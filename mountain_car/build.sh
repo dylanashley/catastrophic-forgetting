@@ -39,7 +39,7 @@ NUM_EPISODES=500
 ENV_RANGE='classic'
 LOSS='TD'
 TARGET_UPDATE='1'
-for ENV_SEED in `seq 50 249`; do
+for ENV_SEED in `seq 50 299`; do
 # for ENV_SEED in `seq 0 49`; do
 
     APPROXIMATOR='constant'
