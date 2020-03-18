@@ -12,4 +12,5 @@
 source ~/.bashrc
 module load python/3.7
 source env/bin/activate
-'./tasks_'"$SLURM_ARRAY_TASK_ID"'.sh'
+module load scipy-stack/2019b
+parallel :::: './tasks_'"$SLURM_ARRAY_TASK_ID"'.sh'

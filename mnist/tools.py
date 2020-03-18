@@ -17,12 +17,13 @@ repeat_labels = [
     'validation_folds']
 result_labels = [
     'accuracies',
+    'activation_overlap',
     'correct',
+    'pairwise_interference',
     'phase_length',
     'predictions',
     'success']
 setting_labels = [
-    'architecture',
     'beta_1',
     'beta_2',
     'criteria',

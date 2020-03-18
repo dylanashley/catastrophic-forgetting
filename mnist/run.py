@@ -236,6 +236,7 @@ import tensorflow as tf
 import torch
 
 # setup libraries
+torch.set_num_threads(1)
 try:
     tf.logging.set_verbosity('FATAL')
 except AttributeError:
@@ -396,27 +397,45 @@ def get_pairwise_interference(model, loss_fn):
         loss.backward()
         with torch.no_grad():
             grads.append(torch.cat([i.grad.flatten() for i in model.parameters()]).numpy())
-    mean, count = 0, 0
-    for i in range(len(grads)):
-        for j in range(i, len(grads)):
+
+    # calculate pairwise interference
+    same_mean = np.array([0 for _ in range(len(x_ten_test))], dtype=float)
+    same_count = np.copy(same_mean)
+    different_mean = np.copy(same_mean)
+    different_count = np.copy(same_mean)
+    for i in range(len(x_ten_test)):
+        for j in range(i, len(x_ten_test)):
             value = grads[i].dot(grads[j])
             value /= np.sqrt(grads[i].dot(grads[i])) * np.sqrt(grads[j].dot(grads[j]))
-            count += 1
-            mean += (value - mean) / count
-    return mean
+            if y_ten_test[i] == y_ten_test[j]:
+                same_count[i] += 1
+                same_mean[i] += (value - same_mean[i]) / same_count[i]
+            else:
+                different_count[i] += 1
+                different_mean[i] += (value - different_mean[i]) / different_count[i]
+    return np.mean(different_mean / same_mean)
 
 @torch.no_grad()
 def get_activation_overlap(model):
     activations = list()
     for i in range(len(x_ten_test)):
         activations.append((linear1.forward(x_ten_test[i]) > 0))
-    mean, count = 0, 0
-    for i in range(len(activations)):
-        for j in range(i, len(activations)):
+
+    # calculate pairwise interference
+    same_mean = np.array([0 for _ in range(len(x_ten_test))], dtype=float)
+    same_count = np.copy(same_mean)
+    different_mean = np.copy(same_mean)
+    different_count = np.copy(same_mean)
+    for i in range(len(x_ten_test)):
+        for j in range(i, len(x_ten_test)):
             value = (activations[i] & activations[j]).int().float().mean().item()
-            count += 1
-            mean += (value - mean) / count
-    return mean
+            if y_ten_test[i] == y_ten_test[j]:
+                same_count[i] += 1
+                same_mean[i] += (value - same_mean[i]) / same_count[i]
+            else:
+                different_count[i] += 1
+                different_mean[i] += (value - different_mean[i]) / different_count[i]
+    return np.mean(different_mean / same_mean)
 
 # create helper function for phase transitions
 if experiment['criteria'] == 'steps':
