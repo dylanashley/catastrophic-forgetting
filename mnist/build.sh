@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT=$(dirname "$0")'/run.py'
-TASKS_PER_FILE=100
+TASKS_PER_FILE=250
 
 POWERS_OF_TWO=('1.0'
                '0.5'
@@ -30,28 +30,140 @@ if [ "$#" -gt "0" ]
         exit
     fi
 
-# amalgamate all tasks
+# begin amalgamating all tasks
 TASKS_PREFIX='tasks_'
 rm "$TASKS_PREFIX"*.sh 2>/dev/null
 rm tasks.sh 2>/dev/null
 I=0
+
+# set shared parameters for all experiments
+CRITERIA='online'
 DATASET='mnist'
 FOLD_COUNT='10'
-TRAIN_FOLDS='0:1:2:3::0:1:2:3::4:5:6:7::4:5:6:7'
-TEST_FOLDS='8:9'
-PHASES='12:34:12:34'
+HOLD_STEPS='5'
 LOG_FREQUENCY='1'
-CRITERIA='online'
+MINIMUM_STEPS='0'
 REQUIRED_ACCURACY='0.9'
 TOLERANCE='2500'
-MINIMUM_STEPS='0'
-HOLD_STEPS='5'
 
-for INIT_SEED in `seq 50 299`; do
+# ##### Experiment 1 Train ######################################################
+#
+# OPTIMIZER='sgd'
+# MOMENTUM='0.0'
+#
+# TRAIN_FOLDS='0:1:2'
+# TEST_FOLDS='3:4'
+# for INIT_SEED in `seq 0 49`; do
+#     SHUFFLE_SEED=$(((1<<16) - 1 - INIT_SEED))
+#
+#     for LR in "${POWERS_OF_TWO[@]}"; do
+#         PHASES='1234:12:34'
+#         OUTFILE="$I"'.json'
+#         I=$((I + 1))
+#         ARGS=("--outfile=$OUTFILE"
+#               "--dataset=$DATASET"
+#               "--fold-count=$FOLD_COUNT"
+#               "--train-folds=$TRAIN_FOLDS"
+#               "--test-folds=$TEST_FOLDS"
+#               "--phases=$PHASES"
+#               "--test-on-all-digits"
+#               "--log-frequency=$LOG_FREQUENCY"
+#               "--init-seed=$INIT_SEED"
+#               "--shuffle-seed=$SHUFFLE_SEED"
+#               "--criteria=$CRITERIA"
+#               "--required-accuracy=$REQUIRED_ACCURACY"
+#               "--tolerance=$TOLERANCE"
+#               "--minimum-steps=$MINIMUM_STEPS"
+#               "--hold-steps=$HOLD_STEPS"
+#               "--optimizer=$OPTIMIZER"
+#               "--lr=$LR"
+#               "--momentum=$MOMENTUM")
+#         echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+#
+#         PHASES='12:34'
+#         OUTFILE="$I"'.json'
+#         I=$((I + 1))
+#         ARGS=("--outfile=$OUTFILE"
+#               "--dataset=$DATASET"
+#               "--fold-count=$FOLD_COUNT"
+#               "--train-folds=$TRAIN_FOLDS"
+#               "--test-folds=$TEST_FOLDS"
+#               "--phases=$PHASES"
+#               "--test-on-all-digits"
+#               "--log-frequency=$LOG_FREQUENCY"
+#               "--init-seed=$INIT_SEED"
+#               "--shuffle-seed=$SHUFFLE_SEED"
+#               "--criteria=$CRITERIA"
+#               "--required-accuracy=$REQUIRED_ACCURACY"
+#               "--tolerance=$TOLERANCE"
+#               "--minimum-steps=$MINIMUM_STEPS"
+#               "--hold-steps=$HOLD_STEPS"
+#               "--optimizer=$OPTIMIZER"
+#               "--lr=$LR"
+#               "--momentum=$MOMENTUM")
+#         echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+#
+#         PHASES='34:12'
+#         OUTFILE="$I"'.json'
+#         I=$((I + 1))
+#         ARGS=("--outfile=$OUTFILE"
+#               "--dataset=$DATASET"
+#               "--fold-count=$FOLD_COUNT"
+#               "--train-folds=$TRAIN_FOLDS"
+#               "--test-folds=$TEST_FOLDS"
+#               "--phases=$PHASES"
+#               "--test-on-all-digits"
+#               "--log-frequency=$LOG_FREQUENCY"
+#               "--init-seed=$INIT_SEED"
+#               "--shuffle-seed=$SHUFFLE_SEED"
+#               "--criteria=$CRITERIA"
+#               "--required-accuracy=$REQUIRED_ACCURACY"
+#               "--tolerance=$TOLERANCE"
+#               "--minimum-steps=$MINIMUM_STEPS"
+#               "--hold-steps=$HOLD_STEPS"
+#               "--optimizer=$OPTIMIZER"
+#               "--lr=$LR"
+#               "--momentum=$MOMENTUM")
+#         echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+#     done
+# done
+
+##### Experiment 1 Test #######################################################
+
+OPTIMIZER='sgd'
+MOMENTUM='0.0'
+
+TRAIN_FOLDS='5:6:7'
+TEST_FOLDS='8:9'
+for INIT_SEED in `seq 250 2049`; do
+# for INIT_SEED in `seq 50 249`; do
     SHUFFLE_SEED=$(((1<<16) - 1 - INIT_SEED))
 
-    OPTIMIZER='sgd'
-    MOMENTUM='0.0'
+    PHASES='1234:12:34'
+    LR='0.03125'
+    OUTFILE="$I"'.json'
+    I=$((I + 1))
+    ARGS=("--outfile=$OUTFILE"
+          "--dataset=$DATASET"
+          "--fold-count=$FOLD_COUNT"
+          "--train-folds=$TRAIN_FOLDS"
+          "--test-folds=$TEST_FOLDS"
+          "--phases=$PHASES"
+          "--test-on-all-digits"
+          "--log-frequency=$LOG_FREQUENCY"
+          "--init-seed=$INIT_SEED"
+          "--shuffle-seed=$SHUFFLE_SEED"
+          "--criteria=$CRITERIA"
+          "--required-accuracy=$REQUIRED_ACCURACY"
+          "--tolerance=$TOLERANCE"
+          "--minimum-steps=$MINIMUM_STEPS"
+          "--hold-steps=$HOLD_STEPS"
+          "--optimizer=$OPTIMIZER"
+          "--lr=$LR"
+          "--momentum=$MOMENTUM")
+    echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+
+    PHASES='12:34:12:34'
     LR='0.0625'
     OUTFILE="$I"'.json'
     I=$((I + 1))
@@ -75,9 +187,8 @@ for INIT_SEED in `seq 50 299`; do
           "--momentum=$MOMENTUM")
     echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
-    OPTIMIZER='sgd'
-    MOMENTUM='0.81'
-    LR='0.0078125'
+    PHASES='34:12:34:12'
+    LR='0.0625'
     OUTFILE="$I"'.json'
     I=$((I + 1))
     ARGS=("--outfile=$OUTFILE"
@@ -99,60 +210,14 @@ for INIT_SEED in `seq 50 299`; do
           "--lr=$LR"
           "--momentum=$MOMENTUM")
     echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
-
-    OPTIMIZER='rms'
-    RHO='0.99'
-    LR='0.001953125'
-    OUTFILE="$I"'.json'
-    I=$((I + 1))
-    ARGS=("--outfile=$OUTFILE"
-          "--dataset=$DATASET"
-          "--fold-count=$FOLD_COUNT"
-          "--train-folds=$TRAIN_FOLDS"
-          "--test-folds=$TEST_FOLDS"
-          "--phases=$PHASES"
-          "--test-on-all-digits"
-          "--log-frequency=$LOG_FREQUENCY"
-          "--init-seed=$INIT_SEED"
-          "--shuffle-seed=$SHUFFLE_SEED"
-          "--criteria=$CRITERIA"
-          "--required-accuracy=$REQUIRED_ACCURACY"
-          "--tolerance=$TOLERANCE"
-          "--minimum-steps=$MINIMUM_STEPS"
-          "--hold-steps=$HOLD_STEPS"
-          "--optimizer=$OPTIMIZER"
-          "--lr=$LR"
-          "--rho=$RHO")
-    echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
-
-    OPTIMIZER='adam'
-    BETA_1='0.9'
-    BETA_2='0.999'
-    LR='0.00390625'
-    OUTFILE="$I"'.json'
-    I=$((I + 1))
-    ARGS=("--outfile=$OUTFILE"
-          "--dataset=$DATASET"
-          "--fold-count=$FOLD_COUNT"
-          "--train-folds=$TRAIN_FOLDS"
-          "--test-folds=$TEST_FOLDS"
-          "--phases=$PHASES"
-          "--test-on-all-digits"
-          "--log-frequency=$LOG_FREQUENCY"
-          "--init-seed=$INIT_SEED"
-          "--shuffle-seed=$SHUFFLE_SEED"
-          "--criteria=$CRITERIA"
-          "--required-accuracy=$REQUIRED_ACCURACY"
-          "--tolerance=$TOLERANCE"
-          "--minimum-steps=$MINIMUM_STEPS"
-          "--hold-steps=$HOLD_STEPS"
-          "--optimizer=$OPTIMIZER"
-          "--lr=$LR"
-          "--beta-1=$BETA_1"
-          "--beta-2=$BETA_2")
-    echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 done
 
+##### Experiment 2 Train ######################################################
+#
+# PHASES='12:34:12:34'
+# TEST_FOLDS='8:9'
+# TRAIN_FOLDS='0:1:2:3::0:1:2:3::4:5:6:7::4:5:6:7'
+#
 # for INIT_SEED in `seq 0 49`; do
 #     SHUFFLE_SEED=$(((1<<16) - 1 - INIT_SEED))
 #
@@ -235,6 +300,114 @@ done
 #             done
 #         done
 #     done
+# done
+
+##### Experiment 2 Test #######################################################
+#
+# for INIT_SEED in `seq 50 299`; do
+#     SHUFFLE_SEED=$(((1<<16) - 1 - INIT_SEED))
+#
+#     OPTIMIZER='sgd'
+#     MOMENTUM='0.0'
+#     LR='0.0625'
+#     OUTFILE="$I"'.json'
+#     I=$((I + 1))
+#     ARGS=("--outfile=$OUTFILE"
+#           "--dataset=$DATASET"
+#           "--fold-count=$FOLD_COUNT"
+#           "--train-folds=$TRAIN_FOLDS"
+#           "--test-folds=$TEST_FOLDS"
+#           "--phases=$PHASES"
+#           "--test-on-all-digits"
+#           "--log-frequency=$LOG_FREQUENCY"
+#           "--init-seed=$INIT_SEED"
+#           "--shuffle-seed=$SHUFFLE_SEED"
+#           "--criteria=$CRITERIA"
+#           "--required-accuracy=$REQUIRED_ACCURACY"
+#           "--tolerance=$TOLERANCE"
+#           "--minimum-steps=$MINIMUM_STEPS"
+#           "--hold-steps=$HOLD_STEPS"
+#           "--optimizer=$OPTIMIZER"
+#           "--lr=$LR"
+#           "--momentum=$MOMENTUM")
+#     echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+#
+#     OPTIMIZER='sgd'
+#     MOMENTUM='0.81'
+#     LR='0.0078125'
+#     OUTFILE="$I"'.json'
+#     I=$((I + 1))
+#     ARGS=("--outfile=$OUTFILE"
+#           "--dataset=$DATASET"
+#           "--fold-count=$FOLD_COUNT"
+#           "--train-folds=$TRAIN_FOLDS"
+#           "--test-folds=$TEST_FOLDS"
+#           "--phases=$PHASES"
+#           "--test-on-all-digits"
+#           "--log-frequency=$LOG_FREQUENCY"
+#           "--init-seed=$INIT_SEED"
+#           "--shuffle-seed=$SHUFFLE_SEED"
+#           "--criteria=$CRITERIA"
+#           "--required-accuracy=$REQUIRED_ACCURACY"
+#           "--tolerance=$TOLERANCE"
+#           "--minimum-steps=$MINIMUM_STEPS"
+#           "--hold-steps=$HOLD_STEPS"
+#           "--optimizer=$OPTIMIZER"
+#           "--lr=$LR"
+#           "--momentum=$MOMENTUM")
+#     echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+#
+#     OPTIMIZER='rms'
+#     RHO='0.99'
+#     LR='0.001953125'
+#     OUTFILE="$I"'.json'
+#     I=$((I + 1))
+#     ARGS=("--outfile=$OUTFILE"
+#           "--dataset=$DATASET"
+#           "--fold-count=$FOLD_COUNT"
+#           "--train-folds=$TRAIN_FOLDS"
+#           "--test-folds=$TEST_FOLDS"
+#           "--phases=$PHASES"
+#           "--test-on-all-digits"
+#           "--log-frequency=$LOG_FREQUENCY"
+#           "--init-seed=$INIT_SEED"
+#           "--shuffle-seed=$SHUFFLE_SEED"
+#           "--criteria=$CRITERIA"
+#           "--required-accuracy=$REQUIRED_ACCURACY"
+#           "--tolerance=$TOLERANCE"
+#           "--minimum-steps=$MINIMUM_STEPS"
+#           "--hold-steps=$HOLD_STEPS"
+#           "--optimizer=$OPTIMIZER"
+#           "--lr=$LR"
+#           "--rho=$RHO")
+#     echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+#
+#     OPTIMIZER='adam'
+#     BETA_1='0.9'
+#     BETA_2='0.999'
+#     LR='0.00390625'
+#     OUTFILE="$I"'.json'
+#     I=$((I + 1))
+#     ARGS=("--outfile=$OUTFILE"
+#           "--dataset=$DATASET"
+#           "--fold-count=$FOLD_COUNT"
+#           "--train-folds=$TRAIN_FOLDS"
+#           "--test-folds=$TEST_FOLDS"
+#           "--phases=$PHASES"
+#           "--test-on-all-digits"
+#           "--log-frequency=$LOG_FREQUENCY"
+#           "--init-seed=$INIT_SEED"
+#           "--shuffle-seed=$SHUFFLE_SEED"
+#           "--criteria=$CRITERIA"
+#           "--required-accuracy=$REQUIRED_ACCURACY"
+#           "--tolerance=$TOLERANCE"
+#           "--minimum-steps=$MINIMUM_STEPS"
+#           "--hold-steps=$HOLD_STEPS"
+#           "--optimizer=$OPTIMIZER"
+#           "--lr=$LR"
+#           "--beta-1=$BETA_1"
+#           "--beta-2=$BETA_2")
+#     echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 # done
 
 # split tasks into files
