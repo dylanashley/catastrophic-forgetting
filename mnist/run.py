@@ -36,6 +36,10 @@ parser.add_argument(
          'required',
     required=True)
 parser.add_argument(
+    '--prevent-repeats',
+    action='store_true',
+    help='prevent the same sample appearing multiple times in the same phase')
+parser.add_argument(
     '--test-folds',
     type=str,
     help='colon separated set of folds to use for testing')
@@ -195,12 +199,13 @@ if experiment['criteria'] == 'offline':
 if experiment['criteria'] == 'online':
     assert(experiment['steps'] is None)
     assert(experiment['required_accuracy'] is not None)
-    assert(experiment['tolerance'] is not None)
+    if not experiment['prevent_repeats']:
+        assert(experiment['tolerance'] is not None)
+        assert(0 < experiment['tolerance'])
     assert(experiment['validation_folds'] is None)
     assert(experiment['minimum_steps'] is not None)
     assert(experiment['hold_steps'] is not None)
     assert(0 < experiment['required_accuracy'] <= 1)
-    assert(0 < experiment['tolerance'])
     assert(0 <= experiment['minimum_steps'])
     assert(0 <= experiment['hold_steps'])
 
@@ -458,9 +463,13 @@ for phase in range(len(experiment['phases'])):
     i = j = k = 0
     assert(not phase_over(phase, i, j, k))
     while True:
-        if (not warned_about_repeats) and (i > examples_in_phase):
-            warnings.warn('sampling examples with replacement')
-            warned_about_repeats = True
+        if i > examples_in_phase:
+            if experiment['prevent_repeats']:
+                experiment['success'] = False
+                break
+            if not warned_about_repeats:
+                warnings.warn('sampling examples with replacement')
+                warned_about_repeats = True
         x = x_train[phase][i % examples_in_phase]
         y_pred = model(x).double()
         y = y_train[phase][i % examples_in_phase].long()
