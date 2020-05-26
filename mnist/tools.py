@@ -165,17 +165,18 @@ def get_summary(results):
         del rv[key]['phases_second']
     return rv
 
+def total_time_metric(buffer_count=0, buffer_value=0):
+    return lambda x: x['total_time_avg'] + buffer_value * max(buffer_count - x['count'][0], 0)
+
+def errors_metric():
+    return lambda x: x['total_errors_avg']
+
+def phase_time_metric(phase, buffer_count=0, buffer_value=0):
+    return lambda x: sum(x['phases_avg'][:phase] +
+                         buffer_value * max(buffer_count - x['count'][0], 0))
+
 def get_best(summary, metric):
     """Filters a summary to obtain the best average total of a metric for each optimizer."""
-    if metric == 'time':
-        metric = lambda x: x['total_time_avg']
-    elif metric == 'errors':
-        metric = lambda x: x['total_errors_avg']
-    elif metric[0] == 'p':
-        phase = int(metric[1:])
-        metric = lambda x: sum(x['phases_avg'][:phase])
-    else:
-        assert(False)
     rv = dict()
     for key, value in summary.items():
         optimizer = key.optimizer

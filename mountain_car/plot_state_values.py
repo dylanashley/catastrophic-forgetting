@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from envs import MountainCar, MountainCarPrediction
+from tools import scale
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -24,9 +25,30 @@ for i, velocity in enumerate(velocity_bins):
             MountainCarPrediction.get_return((position, velocity))
 
 # create the plot
+sns.set_style('ticks')
 fig, ax = plt.subplots(dpi=300, figsize=(6, 4))
-sns.heatmap(return_grid, cmap='gray', square=True, yticklabels=False, xticklabels=False, ax=ax)
+sns.heatmap(return_grid,
+            vmax=0,
+            cmap='cividis',
+            square=True,
+            ax=ax)
+for _, spine in ax.spines.items():
+    spine.set_visible(True)
+fig.axes[1].artists[0]._linewidth = list(ax.spines.values())[0]._linewidth
 ax.set_xlabel('Position', labelpad=5)
+plt.xticks(scale(np.array([- 1.0, - 0.5, 0.0, 0.5]),
+                 MountainCar.MIN_POSITION,
+                 MountainCar.MAX_POSITION,
+                 0,
+                 24),
+           labels=[- 1.0, - 0.5, 0.0, 0.5],
+           rotation='horizontal')
 ax.set_ylabel('Velocity', labelpad=5)
-ax.set_title('Value of States in Mountain Car Prediction Task', fontsize=10)
-fig.savefig('state_values.png')
+plt.yticks(scale(np.array([- 0.06, - 0.03, 0.0, 0.03, 0.06]),
+                 MountainCar.MIN_VELOCITY,
+                 MountainCar.MAX_VELOCITY,
+                 0,
+                 24),
+           labels=[- 0.06, - 0.03, 0.0, 0.03, 0.06],
+           rotation='horizontal')
+fig.savefig('state_values.pdf', bbox_inches='tight')

@@ -405,19 +405,24 @@ for episode in range(experiment['num_episodes']):
             learner.update(reward, 1, x, experiment['lr'], experiment['lambda'])
         else:
             assert(experiment['approximator'] == 'neural_network')
-            y_pred = model(torch.tensor((position, velocity)))
+            y_pred = model(torch.tensor((position, velocity),
+                                        dtype=torch.float))
             if experiment['loss'] == 'squared_error':
-                y = torch.tensor([return_])
+                y = torch.tensor([return_],
+                                 dtype=torch.float)
             else:
                 assert(experiment['loss'] == 'TD')
                 if terminal:
-                    y = torch.tensor([- 1], dtype=torch.float)
+                    y = torch.tensor([- 1],
+                                     dtype=torch.float)
                 else:
                     with torch.no_grad():  # don't use residual gradient
                         if experiment['target_update'] > 1:
-                            y = reward + target_model(torch.tensor((next_position, next_velocity)))
+                            y = reward + target_model(torch.tensor((next_position, next_velocity),
+                                                                   dtype=torch.float))
                         else:
-                            y = reward + model(torch.tensor((next_position, next_velocity)))
+                            y = reward + model(torch.tensor((next_position, next_velocity),
+                                                            dtype=torch.float))
             loss = loss_fn(y_pred, y)
             optimizer.zero_grad()
             loss.backward()

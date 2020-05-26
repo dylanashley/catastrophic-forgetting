@@ -280,13 +280,9 @@ if experiment['validation_folds'] is not None:
                         for phase in experiment['phases']]
 
 # build datasets
-if experiment['shuffle_seed'] is None:
-    shuffle_generator = np.random.RandomState()
-else:
-    shuffle_generator = np.random.RandomState(experiment['shuffle_seed'])
 def shuffle_jointly(x, y):
     z = list(zip(x, y))
-    shuffle_generator.shuffle(z)
+    np.random.RandomState(seed=experiment['shuffle_seed']).shuffle(z)
     x, y = zip(* z)
     return x, y
 x_train = [raw_x_train[mask, ...]
