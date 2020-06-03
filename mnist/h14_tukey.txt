@@ -1,0 +1,11 @@
+  Multiple Comparison of Means - Tukey HSD, FWER=0.00  
+=======================================================
+ group1   group2  meandiff p-adj   lower  upper  reject
+-------------------------------------------------------
+    adam momentum   0.8536  0.001  0.3248 1.3824   True
+    adam      rms    1.235  0.001  0.7062 1.7638   True
+    adam      sgd     2.95  0.001  2.4211 3.4788   True
+momentum      rms   0.3814 0.0546 -0.1474 0.9102  False
+momentum      sgd   2.0964  0.001  1.5675 2.6252   True
+     rms      sgd    1.715  0.001  1.1862 2.2438   True
+-------------------------------------------------------
