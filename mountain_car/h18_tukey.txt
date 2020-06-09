@@ -2,7 +2,7 @@
 ========================================================
  group1   group2  meandiff p-adj   lower   upper  reject
 --------------------------------------------------------
-    adam momentum   0.0083  0.001  0.0065  0.0102   True
+    adam momentum   0.0083  0.001  0.0065  0.0101   True
     adam      rms   0.0647  0.001  0.0628  0.0665   True
     adam      sgd   0.0097  0.001  0.0078  0.0115   True
 momentum      rms   0.0563  0.001  0.0545  0.0582   True
