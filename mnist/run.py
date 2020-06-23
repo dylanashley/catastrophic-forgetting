@@ -323,10 +323,10 @@ if experiment['validation_folds'] is not None:
 # build model
 dtype = torch.float
 linear1 = torch.nn.Linear(28 * 28, 100)
-torch.nn.init.normal_(linear1.weight, std=0.05)
+torch.nn.init.xavier_uniform_(linear1.weight)
 relu1 = torch.nn.ReLU()
 linear2 = torch.nn.Linear(100, len(experiment['digits']))
-torch.nn.init.normal_(linear2.weight, std=0.05)
+torch.nn.init.xavier_uniform_(linear2.weight)
 model = torch.nn.Sequential(
     linear1,
     relu1,
@@ -361,8 +361,8 @@ experiment['correct'] = list()
 experiment['phase_length'] = list()
 experiment['accuracies'] = None if experiment['test_folds'] is None else list()
 experiment['predictions'] = None if experiment['test_folds'] is None else list()
-experiment['pairwise_interference'] = None if experiment['test_folds'] is None else list()
 experiment['activation_overlap'] = None if experiment['test_folds'] is None else list()
+experiment['sparse_activation_overlap'] = None if experiment['test_folds'] is None else list()
 
 # create helper functions for metrics
 @torch.no_grad()
@@ -387,27 +387,20 @@ def get_predictions(model):
             rv[i, j] = ((y_pred & y).int().sum().float() / y.sum().float()).item()
     return rv.tolist()
 
-def get_pairwise_interference(model, loss_fn):
-    grads = list()
+@torch.no_grad()
+def get_activation_overlap(model):
+    activations = list()
     for i in range(len(x_ten_test)):
-        x = x_ten_test[i]
-        y_pred = model(x).double()
-        y = y_ten_test[i].long()
-        loss = loss_fn(y_pred.unsqueeze(0), y.unsqueeze(0))
-        model.zero_grad()
-        loss.backward()
-        with torch.no_grad():
-            grads.append(torch.cat([i.grad.flatten() for i in model.parameters()]).numpy())
+        activations.append(relu1.forward(linear1.forward(x_ten_test[i])))
 
-    # calculate pairwise interference
+    # calculate activation overlap
     same_mean = np.array([0 for _ in range(len(x_ten_test))], dtype=float)
     same_count = np.copy(same_mean)
     different_mean = np.copy(same_mean)
     different_count = np.copy(same_mean)
     for i in range(len(x_ten_test)):
         for j in range(i, len(x_ten_test)):
-            value = grads[i].dot(grads[j])
-            value /= np.sqrt(grads[i].dot(grads[i])) * np.sqrt(grads[j].dot(grads[j]))
+            value = (torch.min(activations[i], activations[j])).mean().item()
             if y_ten_test[i] == y_ten_test[j]:
                 same_count[i] += 1
                 same_mean[i] += (value - same_mean[i]) / same_count[i]
@@ -417,12 +410,12 @@ def get_pairwise_interference(model, loss_fn):
     return np.mean(different_mean / same_mean)
 
 @torch.no_grad()
-def get_activation_overlap(model):
+def get_sparse_activation_overlap(model):
     activations = list()
     for i in range(len(x_ten_test)):
         activations.append((linear1.forward(x_ten_test[i]) > 0))
 
-    # calculate pairwise interference
+    # calculate sparse activation overlap
     same_mean = np.array([0 for _ in range(len(x_ten_test))], dtype=float)
     same_count = np.copy(same_mean)
     different_mean = np.copy(same_mean)
@@ -479,8 +472,8 @@ for phase in range(len(experiment['phases'])):
         if (experiment['test_folds'] is not None) and (not (i % experiment['log_frequency'])):
             experiment['accuracies'].append(get_accuracies(model))
             experiment['predictions'].append(get_predictions(model))
-            experiment['pairwise_interference'].append(get_pairwise_interference(model, loss_fn))
             experiment['activation_overlap'].append(get_activation_overlap(model))
+            experiment['sparse_activation_overlap'].append(get_sparse_activation_overlap(model))
         i += 1
         if correct:
             j += 1

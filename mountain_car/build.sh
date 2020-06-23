@@ -1,27 +1,39 @@
 #!/bin/bash
 
 SCRIPT=$(dirname "$0")'/run.py'
-TASKS_PER_FILE=75
+TASKS_PER_FILE=100
 
-POWERS_OF_TWO=('1.0'
-               '0.5'
-               '0.25'
-               '0.125'
-               '0.0625'
-               '0.03125'
-               '0.015625'
-               '0.0078125'
-               '0.00390625'
-               '0.001953125'
-               '0.0009765625'
-               '0.00048828125'
-               '0.000244140625'
-               '0.0001220703125'
-               '0.00006103515625'
-               '0.000030517578125'
-               '0.0000152587890625'
-               '0.00000762939453125'
-               '0.000003814697265625')
+LEARNING_RATES=('0.125'
+                '0.08838834764831845'
+                '0.0625'
+                '0.04419417382415922'
+                '0.03125'
+                '0.02209708691207961'
+                '0.015625'
+                '0.011048543456039806'
+                '0.0078125'
+                '0.005524271728019903'
+                '0.00390625'
+                '0.0027621358640099515'
+                '0.001953125'
+                '0.0013810679320049757'
+                '0.0009765625'
+                '0.0006905339660024879'
+                '0.00048828125'
+                '0.00034526698300124393'
+                '0.000244140625'
+                '0.00017263349150062197'
+                '0.0001220703125'
+                '8.631674575031098e-05'
+                '6.103515625e-05'
+                '4.315837287515549e-05'
+                '3.0517578125e-05'
+                '2.1579186437577746e-05'
+                '1.52587890625e-05'
+                '1.0789593218788873e-05'
+                '7.62939453125e-06'
+                '5.3947966093944364e-06'
+                '3.814697265625e-06')
 
 # assert command line arguments valid
 if [ "$#" -gt "0" ]
@@ -54,12 +66,12 @@ for ENV_SEED in `seq 0 49`; do
           "--env-range=$ENV_RANGE"
           "--env-seed=$ENV_SEED"
           "--approximator=$APPROXIMATOR")
-    echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
     APPROXIMATOR='neural_network'
     NETWORK_SEED=$(((1<<16) - 1 - ENV_SEED))
 
-    for LR in "${POWERS_OF_TWO[@]}"; do
+    for LR in "${LEARNING_RATES[@]}"; do
         for MOMENTUM in '0.0' '0.81' '0.9' '0.99'; do
             OPTIMIZER='sgd'
             OUTFILE="$I"'.json'
@@ -75,7 +87,7 @@ for ENV_SEED in `seq 0 49`; do
                   "--optimizer=$OPTIMIZER"
                   "--lr=$LR"
                   "--momentum=$MOMENTUM")
-            echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+            echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
         done
 
         for RHO in '0.81' '0.9' '0.99'; do
@@ -93,7 +105,7 @@ for ENV_SEED in `seq 0 49`; do
                   "--optimizer=$OPTIMIZER"
                   "--lr=$LR"
                   "--rho=$RHO")
-            echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+            echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
         done
 
         for BETA_1 in '0.9'; do
@@ -113,7 +125,7 @@ for ENV_SEED in `seq 0 49`; do
                       "--lr=$LR"
                       "--beta-1=$BETA_1"
                       "--beta-2=$BETA_2")
-                echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+                echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
             done
         done
     done
@@ -131,7 +143,7 @@ for ENV_SEED in `seq 50 549`; do
           "--env-range=$ENV_RANGE"
           "--env-seed=$ENV_SEED"
           "--approximator=$APPROXIMATOR")
-    echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
     APPROXIMATOR='neural_network'
     NETWORK_SEED=$(((1<<16) - 1 - ENV_SEED))
@@ -152,7 +164,7 @@ for ENV_SEED in `seq 50 549`; do
           "--optimizer=$OPTIMIZER"
           "--lr=$LR"
           "--momentum=$MOMENTUM")
-    echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
     OPTIMIZER='sgd'
     OUTFILE="$I"'.json'
@@ -170,7 +182,7 @@ for ENV_SEED in `seq 50 549`; do
           "--optimizer=$OPTIMIZER"
           "--lr=$LR"
           "--momentum=$MOMENTUM")
-    echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
     OPTIMIZER='rms'
     OUTFILE="$I"'.json'
@@ -188,7 +200,7 @@ for ENV_SEED in `seq 50 549`; do
           "--optimizer=$OPTIMIZER"
           "--lr=$LR"
           "--rho=$RHO")
-    echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
     OPTIMIZER='adam'
     OUTFILE="$I"'.json'
@@ -208,7 +220,7 @@ for ENV_SEED in `seq 50 549`; do
           "--lr=$LR"
           "--beta-1=$BETA_1"
           "--beta-2=$BETA_2")
-    echo 'python '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 done
 
 ###############################################################################

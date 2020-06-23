@@ -169,34 +169,21 @@ if experiment['network_seed'] is not None:
 
 # load test states
 test_data = np.load('test_states.npz')
+for i in range(len(test_data['y'])):
+    test_data['x'][i] = scale_observation(test_data['x'][i])
 test_data_x = torch.tensor(test_data['x'], dtype=torch.float)
 test_data_y = torch.tensor(test_data['y'], dtype=torch.float)
-for i in range(len(test_data_y)):
-    test_data_x[i, 0] = scale_position(test_data_x[i, 0])
-    test_data_x[i, 1] = scale_velocity(test_data_x[i, 1])
 
 # load interference test states if necessary
 if experiment['approximator'] == 'neural_network':
     interference_test_data = np.load('interference_test_states.npz')
+    for i in range(len(interference_test_data['y'])):
+        interference_test_data['x'][i] = scale_observation(interference_test_data['x'][i])
+        interference_test_data['next_x'][i] = scale_observation(interference_test_data['next_x'][i])
     interference_x_test = torch.tensor(interference_test_data['x'], dtype=torch.float)
     interference_y_test = torch.tensor(interference_test_data['y'], dtype=torch.float)
-    interference_next_x_test = list()
-    interference_next_y_test = list()
-    for i in range(len(interference_y_test)):
-        position = interference_x_test[i, 0]
-        velocity = interference_x_test[i, 1]
-        next_position, next_velocity = \
-            MountainCarPrediction.get_next_observation((position, velocity))
-        next_return = \
-            MountainCarPrediction.get_return((next_position, next_velocity))
-        next_position = scale_position(next_position)
-        next_velocity = scale_velocity(next_velocity)
-        interference_next_x_test.append([next_position, next_velocity])
-        interference_next_y_test.append(next_return)
-        interference_x_test[i, 0] = scale_position(position)
-        interference_x_test[i, 1] = scale_velocity(velocity)
-    interference_next_x_test = torch.tensor(interference_next_x_test, dtype=torch.float)
-    interference_next_y_test = torch.tensor(interference_next_y_test, dtype=torch.float)
+    interference_next_x_test = torch.tensor(interference_test_data['next_x'], dtype=torch.float)
+    interference_next_y_test = torch.tensor(interference_test_data['next_y'], dtype=torch.float)
 
 # prepare buffers to store results
 experiment['steps'] = list()
@@ -204,10 +191,12 @@ experiment['accuracy'] = list()
 if experiment['approximator'] in ['constant', 'tile_coder']:
     experiment['pairwise_interference'] = None
     experiment['activation_overlap'] = None
+    experiment['sparse_activation_overlap'] = None
 else:
     assert(experiment['approximator'] == 'neural_network')
     experiment['pairwise_interference'] = list()
     experiment['activation_overlap'] = list()
+    experiment['sparse_activation_overlap'] = list()
 
 # prepare environment
 if experiment['env_seed'] is None:
@@ -227,9 +216,9 @@ else:
     assert(experiment['approximator'] == 'neural_network')
 
     # setup network
-    linear1 = torch.nn.Linear(2, 50)
+    linear1 = torch.nn.Linear(2, 100)
     relu1 = torch.nn.ReLU()
-    linear2 = torch.nn.Linear(50, 1)
+    linear2 = torch.nn.Linear(100, 1)
     if experiment['network_seed'] is not None:
         torch.manual_seed(experiment['network_seed'])
     torch.nn.init.xavier_uniform_(linear1.weight)
@@ -324,6 +313,22 @@ else:
                 position = interference_x_test[i, 0]
                 velocity = interference_x_test[i, 1]
                 activations.append(
+                    (relu1.forward(linear1.forward(torch.tensor((position, velocity))))).numpy())
+            mean, count = 0, 0
+            for i in range(len(activations)):
+                for j in range(i, len(activations)):
+                    value = np.mean(np.minimum(activations[i], activations[j]))
+                    count += 1
+                    mean += (value - mean) / count
+        return mean
+
+    def test_sparse_activation_overlap():
+        with torch.no_grad():
+            activations = list()
+            for i in range(len(interference_x_test)):
+                position = interference_x_test[i, 0]
+                velocity = interference_x_test[i, 1]
+                activations.append(
                     (linear1.forward(torch.tensor((position, velocity))) > 0).numpy())
             mean, count = 0, 0
             for i in range(len(activations)):
@@ -338,6 +343,7 @@ experiment['accuracy'].append(test())
 if experiment['approximator'] == 'neural_network':
     experiment['pairwise_interference'].append(test_pairwise_interference())
     experiment['activation_overlap'].append(test_activation_overlap())
+    experiment['sparse_activation_overlap'].append(test_sparse_activation_overlap())
 
 # run experiment
 for episode in range(experiment['num_episodes']):
@@ -380,10 +386,8 @@ for episode in range(experiment['num_episodes']):
         next_position = next_observation[0]
         next_velocity = next_observation[1]
         if experiment['approximator'] == 'neural_network':
-            position = scale_position(position)
-            velocity = scale_velocity(velocity)
-            next_position = scale_position(next_position)
-            next_velocity = scale_velocity(next_velocity)
+            position, velocity = scale_observation((position, velocity))
+            next_position, next_velocity = scale_observation((next_position, next_velocity))
         terminal = MountainCarPrediction.is_terminal(next_observation)
         return_ = returns[i]
         try:
@@ -439,6 +443,7 @@ for episode in range(experiment['num_episodes']):
     if experiment['approximator'] == 'neural_network':
         experiment['pairwise_interference'].append(test_pairwise_interference())
         experiment['activation_overlap'].append(test_activation_overlap())
+        experiment['sparse_activation_overlap'].append(test_sparse_activation_overlap())
 
 # save results
 experiment['end_time'] = datetime.datetime.now(datetime.timezone.utc).astimezone().isoformat()

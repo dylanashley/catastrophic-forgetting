@@ -7,10 +7,8 @@ import pandas as pd
 
 # prevent recursive imports
 GOAL_POSITION = 0.5
-MAX_POSITION = 0.6
-MAX_VELOCITY = 0.07
-MIN_POSITION = - 1.2
-MIN_VELOCITY = - MAX_VELOCITY
+OBSERVATION_MAX = np.array([0.6, 0.07])
+OBSERVATION_MIN = np.array([- 1.2, - 0.07])
 
 misc_labels = [
     'end_time',
@@ -84,14 +82,8 @@ def scale(value, start_min, start_max, end_min, end_max):
     """
     return (end_min + (end_max - end_min) * (value - start_min) / (start_max - start_min))
 
-def scale_position(value):
-    assert(MIN_POSITION <= value <= MAX_POSITION)
-    rv = scale(value, MIN_POSITION, MAX_POSITION, - 1, 1)
-    assert(- 1 <= rv <= 1)
-    return rv
-
-def scale_velocity(value):
-    assert(MIN_VELOCITY <= value <= MAX_VELOCITY)
-    rv = scale(value, MIN_VELOCITY, MAX_VELOCITY, - 1, 1)
-    assert(- 1 <= rv <= 1)
+def scale_observation(value):
+    assert(all([OBSERVATION_MIN[i] <= value[i] <= OBSERVATION_MAX[i] for i in range(len(value))]))
+    rv = scale(value, OBSERVATION_MIN, OBSERVATION_MAX, - 1, 1)
+    assert(all([- 1 <= rv[i] <= 1 for i in range(len(rv))]))
     return rv

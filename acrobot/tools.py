@@ -5,8 +5,13 @@ import json
 import numpy as np
 import pandas as pd
 
+# prevent recursive imports
+OBSERVATION_MAX = np.array([1.0, 1.0, 1.0, 1.0, 4 * np.pi, 9 * np.pi])
+OBSERVATION_MIN = - OBSERVATION_MAX
+
 misc_labels = [
     'end_time',
+    'env_range',
     'num_episodes',
     'outfile',
     'start_time',
@@ -20,13 +25,16 @@ result_labels = [
     'auc',
     'pairwise_interference']
 hyperparameter_labels = [
+    'approximator',
     'beta_1',
     'beta_2',
+    'lambda_',
+    'loss',
     'lr',
     'momentum',
     'optimizer',
     'rho',
-    'loss']
+    'target_update']
 
 Key = collections.namedtuple('Key', hyperparameter_labels)
 
@@ -72,3 +80,9 @@ def scale(value, start_min, start_max, end_min, end_max):
     [start_min, start_max] to [end_min, end_max].
     """
     return (end_min + (end_max - end_min) * (value - start_min) / (start_max - start_min))
+
+def scale_observation(value):
+    assert(all([OBSERVATION_MIN[i] <= value[i] <= OBSERVATION_MAX[i] for i in range(len(value))]))
+    rv = scale(value, OBSERVATION_MIN, OBSERVATION_MAX, - 1, 1)
+    assert(all([- 1 <= rv[i] <= 1 for i in range(len(rv))]))
+    return rv

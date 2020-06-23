@@ -90,10 +90,16 @@ if args['interference_outfile'] is not None:
     velocity_bins += (velocity_bins[1] - velocity_bins[0]) / 2
     interference_states = list()
     interference_returns = list()
+    interference_next_states = list()
+    interference_next_returns = list()
     for position in position_bins:
         for velocity in velocity_bins:
-            interference_states.append((position, velocity))
-            interference_returns.append(MountainCarPrediction.get_return((position, velocity)))
+            observation = (position, velocity)
+            interference_states.append(observation)
+            interference_returns.append(MountainCarPrediction.get_return(observation))
+            next_observation = MountainCarPrediction.get_next_observation(observation)
+            interference_next_states.append(next_observation)
+            interference_next_returns.append(MountainCarPrediction.get_return(next_observation))
 
 # save arrays
 np.savez(args['outfile'],
@@ -105,4 +111,6 @@ if args['trajectory_outfile'] is not None:
 if args['interference_outfile'] is not None:
     np.savez(args['interference_outfile'],
              x=interference_states,
-             y=interference_returns)
+             y=interference_returns,
+             next_x=interference_next_states,
+             next_y=interference_next_returns)
