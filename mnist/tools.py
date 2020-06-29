@@ -19,9 +19,9 @@ result_labels = [
     'accuracies',
     'activation_overlap',
     'correct',
-    'pairwise_interference',
     'phase_length',
     'predictions',
+    'sparse_activation_overlap',
     'success']
 setting_labels = [
     'beta_1',

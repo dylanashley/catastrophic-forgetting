@@ -23,7 +23,8 @@ result_labels = [
     'accuracy',
     'activation_overlap',
     'auc',
-    'pairwise_interference']
+    'pairwise_interference',
+    'sparse_activation_overlap']
 hyperparameter_labels = [
     'approximator',
     'beta_1',

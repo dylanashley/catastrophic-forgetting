@@ -18,8 +18,12 @@ progress_str = progress_str_template.format(0)
 sys.stdout.write('Building {}: '.format(outfile) + progress_str)
 for i, infile in enumerate(files):
     import time
-    with open(infile, 'r') as f:
-        data.append(json.load(f))
+    try:
+        with open(infile, 'r') as f:
+            data.append(json.load(f))
+    except json.decoder.JSONDecodeError:
+        print('ERROR: could not decode {}'.format(infile))
+        sys.exit(1)
     back_str = '\b' * len(progress_str)
     progress_str = progress_str_template.format(i + 1)
     sys.stdout.write(back_str + progress_str)

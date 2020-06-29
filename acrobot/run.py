@@ -289,7 +289,7 @@ else:
             activations = list()
             for i in range(len(interference_x_test)):
                 activations.append(
-                    (linear1.forward(nterference_x_test[i, :]) > 0).numpy())
+                    (linear1.forward(interference_x_test[i, :]) > 0).numpy())
             mean, count = 0, 0
             for i in range(len(activations)):
                 for j in range(i, len(activations)):
