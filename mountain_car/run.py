@@ -33,7 +33,7 @@ parser.add_argument(
     help='seed for episode initialization')
 parser.add_argument(
     '--approximator',
-    choices=['constant', 'tile_coder', 'neural_network'],
+    choices=['constant', 'neural_network'],
     help='type of function approximator to use; '
          'if set to constant than a constant predictor is used instead of an approximator; '
          'required',
@@ -53,7 +53,8 @@ parser.add_argument(
     type=int,
     help='how often to update the target network; '
          'if set to 1 then no target network is used; '
-         'required by TD loss function only')
+         'defaults to 1',
+    default=1)
 parser.add_argument(
     '--optimizer',
     choices=['sgd', 'adam', 'rms'],
@@ -107,16 +108,6 @@ if experiment['approximator'] == 'constant':
     assert(experiment['beta_2'] is None)
     assert(experiment['rho'] is None)
     assert(experiment['loss'] is None)
-elif experiment['approximator'] == 'tile_coder':
-    assert(experiment['network_seed'] is None)
-    assert(experiment['optimizer'] is None)
-    assert(experiment['lr'] is not None)
-    assert(experiment['lambda'] is not None)
-    assert(experiment['momentum'] is None)
-    assert(experiment['beta_1'] is None)
-    assert(experiment['beta_2'] is None)
-    assert(experiment['rho'] is None)
-    assert(experiment['loss'] is None)
 else:
     assert(experiment['approximator'] == 'neural_network')
     assert(experiment['loss'] is not None)
@@ -157,8 +148,6 @@ from tools import *
 import copy
 import json
 import numpy as np
-import TD
-import tile_coding
 import torch
 
 # setup libraries
@@ -168,7 +157,7 @@ if experiment['network_seed'] is not None:
     torch.backends.cudnn.benchmark = False
 
 # load test states
-test_data = np.load('test_states.npz')
+test_data = dict(np.load('test_states.npz'))
 for i in range(len(test_data['y'])):
     test_data['x'][i] = scale_observation(test_data['x'][i])
 test_data_x = torch.tensor(test_data['x'], dtype=torch.float)
@@ -176,7 +165,7 @@ test_data_y = torch.tensor(test_data['y'], dtype=torch.float)
 
 # load interference test states if necessary
 if experiment['approximator'] == 'neural_network':
-    interference_test_data = np.load('interference_test_states.npz')
+    interference_test_data = dict(np.load('interference_test_states.npz'))
     for i in range(len(interference_test_data['y'])):
         interference_test_data['x'][i] = scale_observation(interference_test_data['x'][i])
         interference_test_data['next_x'][i] = scale_observation(interference_test_data['next_x'][i])
@@ -188,15 +177,13 @@ if experiment['approximator'] == 'neural_network':
 # prepare buffers to store results
 experiment['steps'] = list()
 experiment['accuracy'] = list()
-if experiment['approximator'] in ['constant', 'tile_coder']:
+if experiment['approximator'] == 'constant':
+    experiment['activation_similarity'] = None
     experiment['pairwise_interference'] = None
-    experiment['activation_overlap'] = None
-    experiment['sparse_activation_overlap'] = None
 else:
     assert(experiment['approximator'] == 'neural_network')
+    experiment['activation_similarity'] = list()
     experiment['pairwise_interference'] = list()
-    experiment['activation_overlap'] = list()
-    experiment['sparse_activation_overlap'] = list()
 
 # prepare environment
 if experiment['env_seed'] is None:
@@ -209,22 +196,19 @@ else:
 if experiment['approximator'] == 'constant':
     mean = 0
     count = 0
-elif experiment['approximator'] == 'tile_coder':
-    x = np.zeros(tile_coding.TILE_COUNT)
-    learner = TD.TD(x)
 else:
     assert(experiment['approximator'] == 'neural_network')
 
     # setup network
-    linear1 = torch.nn.Linear(2, 100)
+    linear1 = torch.nn.Linear(2, 50)
     relu1 = torch.nn.ReLU()
-    linear2 = torch.nn.Linear(100, 1)
+    linear2 = torch.nn.Linear(50, 1)
     if experiment['network_seed'] is not None:
         torch.manual_seed(experiment['network_seed'])
     torch.nn.init.xavier_uniform_(linear1.weight)
-    torch.nn.init.normal_(linear1.bias, 0.0, 0.1)
+    torch.nn.init.normal_(linear1.bias, std=0.1)
     torch.nn.init.xavier_uniform_(linear2.weight)
-    torch.nn.init.normal_(linear2.bias, 0.0, 0.1)
+    torch.nn.init.normal_(linear2.bias, std=0.1)
     model = torch.nn.Sequential(
         linear1,
         relu1,
@@ -255,95 +239,58 @@ else:
 
 # build helper functions to compute test statistics
 if experiment['approximator'] == 'constant':
+    @torch.no_grad()
     def test():
-        with torch.no_grad():
-            return ((test_data_y - mean) ** 2).mean().sqrt().item()
-elif experiment['approximator'] == 'tile_coder':
-    def test():
-        predictions = list()
-        x = np.zeros(tile_coding.TILE_COUNT)
-        for i in range(len(test_data_y)):
-            position = test_data_x[i, 0]
-            velocity = test_data_x[i, 1]
-            x.fill(0)
-            x[tile_coding.discretize(position, velocity)] += 1
-            predictions.append(learner(x))
-        with torch.no_grad():
-            return ((test_data_y - torch.tensor(predictions)) ** 2).mean().sqrt().item()
+        return ((test_data_y - mean) ** 2).mean().sqrt().item()
 else:
     assert(experiment['approximator'] == 'neural_network')
 
+    @torch.no_grad()
     def test():
-        with torch.no_grad():
-            return ((test_data_y - model(test_data_x).squeeze()) ** 2).mean().sqrt().item()
+        return float(((test_data_y - model(test_data_x).squeeze()) ** 2).mean().sqrt().item())
 
-    def test_pairwise_interference():
-        grads = list()
+    @torch.no_grad()
+    def test_activation_similarity():
+        activations = list()
         for i in range(len(interference_x_test)):
-            with torch.no_grad():
-                position = interference_x_test[i, 0]
-                velocity = interference_x_test[i, 1]
-                return_ = interference_y_test[i]
-                next_position = interference_next_x_test[i, 0]
-                next_velocity = interference_next_x_test[i, 1]
-                next_return = interference_next_y_test[i]
-                if experiment['loss'] == 'squared_error':
-                    y = torch.tensor([return_])
-                else:
-                    assert(experiment['loss'] == 'TD')
-                    y = next_return - return_ + model(torch.tensor((next_position, next_velocity)))
-            y_pred = model(torch.tensor((position, velocity)))
-            loss = loss_fn(y_pred, y)
-            loss.backward()
-            with torch.no_grad():
-                grads.append(torch.cat([i.grad.flatten() for i in model.parameters()]).numpy())
+            activations.append(
+                (relu1.forward(
+                    linear1.forward(
+                        interference_x_test[i, :]))).numpy())
         mean, count = 0, 0
-        for i in range(len(grads)):
-            for j in range(i, len(grads)):
-                value = grads[i].dot(grads[j])
-                value /= np.sqrt(grads[i].dot(grads[i])) * np.sqrt(grads[j].dot(grads[j]))
+        for i in range(len(activations)):
+            for j in range(i, len(activations)):
+                value = np.dot(activations[i], activations[j])
                 count += 1
                 mean += (value - mean) / count
-        return mean
+        return float(mean)
 
-    def test_activation_overlap():
-        with torch.no_grad():
-            activations = list()
-            for i in range(len(interference_x_test)):
-                position = interference_x_test[i, 0]
-                velocity = interference_x_test[i, 1]
-                activations.append(
-                    (relu1.forward(linear1.forward(torch.tensor((position, velocity))))).numpy())
-            mean, count = 0, 0
-            for i in range(len(activations)):
-                for j in range(i, len(activations)):
-                    value = np.mean(np.minimum(activations[i], activations[j]))
-                    count += 1
-                    mean += (value - mean) / count
-        return mean
+    @torch.no_grad()
+    def _interference_test():
+        return ((interference_y_test - model(interference_x_test).squeeze()) ** 2).numpy()
 
-    def test_sparse_activation_overlap():
-        with torch.no_grad():
-            activations = list()
-            for i in range(len(interference_x_test)):
-                position = interference_x_test[i, 0]
-                velocity = interference_x_test[i, 1]
-                activations.append(
-                    (linear1.forward(torch.tensor((position, velocity))) > 0).numpy())
-            mean, count = 0, 0
-            for i in range(len(activations)):
-                for j in range(i, len(activations)):
-                    value = np.mean(np.logical_and(activations[i], activations[j]))
-                    count += 1
-                    mean += (value - mean) / count
-        return mean
+    def test_pairwise_interference():
+        pre_performance = np.tile(_interference_test(), (len(interference_x_test), 1))
+        post_performance = np.zeros_like(pre_performance)
+        state_dict = copy.deepcopy(model.state_dict())
+        optimizer_state_dict = copy.deepcopy(optimizer.state_dict())
+        for i in range(len(interference_x_test)):
+            y_pred = model(interference_x_test[i, :])
+            y = interference_y_test[i]
+            loss = loss_fn(y_pred, y.unsqueeze(0))
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            post_performance[i, :] = _interference_test()
+            model.load_state_dict(copy.deepcopy(state_dict))
+            optimizer.load_state_dict(copy.deepcopy(optimizer_state_dict))
+        return float(np.mean(post_performance - pre_performance))
 
 # record initial accuracy and interference
 experiment['accuracy'].append(test())
 if experiment['approximator'] == 'neural_network':
+    experiment['activation_similarity'].append(test_activation_similarity())
     experiment['pairwise_interference'].append(test_pairwise_interference())
-    experiment['activation_overlap'].append(test_activation_overlap())
-    experiment['sparse_activation_overlap'].append(test_sparse_activation_overlap())
 
 # run experiment
 for episode in range(experiment['num_episodes']):
@@ -359,74 +306,42 @@ for episode in range(experiment['num_episodes']):
     experiment['steps'].append(step)
 
     # calculate returns
-    returns = np.zeros(len(transitions))
-    for i, (observation, reward, next_observation) in enumerate(transitions):
-        returns[:i + 1] += reward
+    returns = np.arange(- len(transitions), 1)
 
     # train predictor online on episode
     for i, (observation, reward, next_observation) in enumerate(transitions):
 
         # ensure consistincy among transitions and returns
         assert(next_observation == MountainCarPrediction.get_next_observation(observation))
-        try:
-            assert((transitions[i - 1][2] == observation)
-                   or (MountainCarPrediction.is_terminal(transitions[i - 1][2])))
-        except IndexError:
-            pass
-        try:
-            assert((transitions[i + 1][0] == next_observation)
-                   or MountainCarPrediction.is_terminal(next_observation))
-        except IndexError:
-            pass
+        if i > 0:
+            assert(transitions[i - 1][2] == observation)
+        if i < len(transitions) - 1:
+            assert(transitions[i + 1][0] == next_observation)
         assert(returns[i] == MountainCarPrediction.get_return(observation))
-
-        # unpack transition
-        position = observation[0]
-        velocity = observation[1]
-        next_position = next_observation[0]
-        next_velocity = next_observation[1]
-        if experiment['approximator'] == 'neural_network':
-            position, velocity = scale_observation((position, velocity))
-            next_position, next_velocity = scale_observation((next_position, next_velocity))
-        terminal = MountainCarPrediction.is_terminal(next_observation)
-        return_ = returns[i]
-        try:
-            next_return = returns[i + 1]
-        except IndexError:
-            next_return = 0
 
         # update predictor
         if experiment['approximator'] == 'constant':
             count += 1
-            mean += (return_ - mean) / count
-        elif experiment['approximator'] == 'tile_coder':
-            if i == 0:
-                x = np.zeros(tile_coding.TILE_COUNT)
-                x[tile_coding.discretize(position, velocity)] += 1
-                learner.reset(x)
-            x.fill(0)
-            x[tile_coding.discretize(next_position, next_velocity)] += 1
-            learner.update(reward, 1, x, experiment['lr'], experiment['lambda'])
+            mean += (returns[i] - mean) / count
         else:
             assert(experiment['approximator'] == 'neural_network')
-            y_pred = model(torch.tensor((position, velocity),
-                                        dtype=torch.float))
+            y_pred = model(torch.tensor(scale_observation(observation), dtype=torch.float))
             if experiment['loss'] == 'squared_error':
-                y = torch.tensor([return_],
-                                 dtype=torch.float)
+                y = torch.tensor([returns[i]], dtype=torch.float)
             else:
                 assert(experiment['loss'] == 'TD')
-                if terminal:
-                    y = torch.tensor([- 1],
-                                     dtype=torch.float)
+                if MountainCarPrediction.is_terminal(next_observation):
+                    y = torch.tensor([- 1], dtype=torch.float)
                 else:
                     with torch.no_grad():  # don't use residual gradient
                         if experiment['target_update'] > 1:
-                            y = reward + target_model(torch.tensor((next_position, next_velocity),
-                                                                   dtype=torch.float))
+                            y = reward + \
+                                target_model(torch.tensor(scale_observation(next_observation),
+                                                          dtype=torch.float))
                         else:
-                            y = reward + model(torch.tensor((next_position, next_velocity),
-                                                            dtype=torch.float))
+                            y = reward + \
+                                model(torch.tensor(scale_observation(next_observation),
+                                                   dtype=torch.float))
             loss = loss_fn(y_pred, y)
             optimizer.zero_grad()
             loss.backward()
@@ -441,9 +356,8 @@ for episode in range(experiment['num_episodes']):
     # record test statistics
     experiment['accuracy'].append(test())
     if experiment['approximator'] == 'neural_network':
+        experiment['activation_similarity'].append(test_activation_similarity())
         experiment['pairwise_interference'].append(test_pairwise_interference())
-        experiment['activation_overlap'].append(test_activation_overlap())
-        experiment['sparse_activation_overlap'].append(test_sparse_activation_overlap())
 
 # save results
 experiment['end_time'] = datetime.datetime.now(datetime.timezone.utc).astimezone().isoformat()

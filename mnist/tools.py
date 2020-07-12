@@ -5,7 +5,7 @@ import json
 import numpy as np
 import pandas as pd
 
-infrastructure_labels = [
+misc_labels = [
     'end_time',
     'outfile',
     'start_time']
@@ -23,7 +23,7 @@ result_labels = [
     'predictions',
     'sparse_activation_overlap',
     'success']
-setting_labels = [
+hyperparameter_labels = [
     'beta_1',
     'beta_2',
     'criteria',
@@ -43,7 +43,7 @@ setting_labels = [
     'test_on_all_digits',
     'tolerance']
 
-Key = collections.namedtuple('Key', setting_labels)
+Key = collections.namedtuple('Key', hyperparameter_labels)
 
 def to_nested_tuples(item):
     """Converts lists and nested lists to tuples and nested tuples.
@@ -68,13 +68,13 @@ def list_of_dicts_to_dict_of_lists(list_):
             rv[key].append(value)
     return rv
 
-def get_setting_key(entry):
+def get_hyperparameter_key(entry):
     """Obtains the hyperparameter settings from an experimental result.
 
     Checks returned value is hashable.
     """
     rv = list()
-    for label in setting_labels:
+    for label in hyperparameter_labels:
         if isinstance(entry[label], float) and np.isnan(entry[label]):
             rv.append(None)
         else:
@@ -86,7 +86,7 @@ def get_summary(results):
     """Obtains select summary statistics over folds and seeds for some results set."""
     rv = dict()
     for _, row in results.iterrows():
-        key = get_setting_key(row)
+        key = get_hyperparameter_key(row)
         errors = np.cumsum(1 - np.array(row['correct'], dtype=int))
         total_errors = errors[-1]
         total_time = sum(row['phase_length'])
@@ -190,7 +190,7 @@ def get_only_best(results, best):
     """
     rv = pd.DataFrame(columns=results.columns)
     for _, row in results.iterrows():
-        key = get_setting_key(row)
-        if key == get_setting_key(best[key.optimizer]):
+        key = get_hyperparameter_key(row)
+        if key == get_hyperparameter_key(best[key.optimizer]):
             rv = rv.append(row)
     return rv

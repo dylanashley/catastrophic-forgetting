@@ -235,6 +235,7 @@ experiment['start_time'] = datetime.datetime.now(datetime.timezone.utc).astimezo
 # stop the annoying deprecation warnings when loading tensorflow
 warnings.filterwarnings('ignore')
 
+import copy
 import json
 import numpy as np
 import tensorflow as tf
@@ -304,13 +305,13 @@ if experiment['test_folds'] is not None:
         if (digit in experiment['digits']) and (digit_counts[digit] < 10):
             mask[i] = True
             digit_counts[digit] += 1
-    x_ten_test = x_test[-1][mask, ...]  # smaller dataset for second order tests
-    y_ten_test = y_test[-1][mask, ...]
+    interference_x_test = x_test[-1][mask, ...]  # smaller dataset for second order tests
+    interference_y_test = y_test[-1][mask, ...]
     for i in range(len(x_test)):
         x_test[i] = torch.tensor(x_test[i], dtype=torch.float).flatten(start_dim=1)
         y_test[i] = torch.tensor(y_test[i], dtype=torch.int)
-    x_ten_test = torch.tensor(x_ten_test, dtype=torch.float).flatten(start_dim=1)
-    y_ten_test = torch.tensor(y_ten_test, dtype=torch.int)
+    interference_x_test = torch.tensor(interference_x_test, dtype=torch.float).flatten(start_dim=1)
+    interference_y_test = torch.tensor(interference_y_test, dtype=torch.int)
 if experiment['validation_folds'] is not None:
     x_validation = [raw_x_train[mask, ...]
                     for mask in validation_masks]
@@ -323,10 +324,12 @@ if experiment['validation_folds'] is not None:
 # build model
 dtype = torch.float
 linear1 = torch.nn.Linear(28 * 28, 100)
-torch.nn.init.xavier_uniform_(linear1.weight)
 relu1 = torch.nn.ReLU()
 linear2 = torch.nn.Linear(100, len(experiment['digits']))
-torch.nn.init.xavier_uniform_(linear2.weight)
+torch.nn.init.normal_(linear1.weight, std=0.1)
+torch.nn.init.normal_(linear1.bias, std=0.1)
+torch.nn.init.normal_(linear2.weight, std=0.1)
+torch.nn.init.normal_(linear2.bias, std=0.1)
 model = torch.nn.Sequential(
     linear1,
     relu1,
@@ -361,12 +364,12 @@ experiment['correct'] = list()
 experiment['phase_length'] = list()
 experiment['accuracies'] = None if experiment['test_folds'] is None else list()
 experiment['predictions'] = None if experiment['test_folds'] is None else list()
-experiment['activation_overlap'] = None if experiment['test_folds'] is None else list()
-experiment['sparse_activation_overlap'] = None if experiment['test_folds'] is None else list()
+experiment['activation_similarity'] = None if experiment['test_folds'] is None else list()
+experiment['pairwise_interference'] = None if experiment['test_folds'] is None else list()
 
 # create helper functions for metrics
 @torch.no_grad()
-def get_accuracies(model):
+def test_accuracies():
     rv = list()
     for phase in range(len(x_test)):
         x = x_test[phase]
@@ -377,7 +380,7 @@ def get_accuracies(model):
     return rv
 
 @torch.no_grad()
-def get_predictions(model):
+def test_predictions():
     rv = torch.zeros((len(experiment['digits']), len(experiment['digits'])), dtype=torch.float)
     predictions = model(x_test[-1]).argmax(axis=1)
     for i in range(len(experiment['digits'])):
@@ -388,48 +391,41 @@ def get_predictions(model):
     return rv.tolist()
 
 @torch.no_grad()
-def get_activation_overlap(model):
+def test_activation_similarity():
     activations = list()
-    for i in range(len(x_ten_test)):
-        activations.append(relu1.forward(linear1.forward(x_ten_test[i])))
-
-    # calculate activation overlap
-    same_mean = np.array([0 for _ in range(len(x_ten_test))], dtype=float)
-    same_count = np.copy(same_mean)
-    different_mean = np.copy(same_mean)
-    different_count = np.copy(same_mean)
-    for i in range(len(x_ten_test)):
-        for j in range(i, len(x_ten_test)):
-            value = (torch.min(activations[i], activations[j])).mean().item()
-            if y_ten_test[i] == y_ten_test[j]:
-                same_count[i] += 1
-                same_mean[i] += (value - same_mean[i]) / same_count[i]
-            else:
-                different_count[i] += 1
-                different_mean[i] += (value - different_mean[i]) / different_count[i]
-    return np.mean(different_mean / same_mean)
+    for i in range(len(interference_x_test)):
+        activations.append(
+            (relu1.forward(
+                linear1.forward(
+                    interference_x_test[i, :]))).numpy())
+    mean, count = 0, 0
+    for i in range(len(activations)):
+        for j in range(i, len(activations)):
+            value = np.dot(activations[i], activations[j])
+            count += 1
+            mean += (value - mean) / count
+    return float(mean)
 
 @torch.no_grad()
-def get_sparse_activation_overlap(model):
-    activations = list()
-    for i in range(len(x_ten_test)):
-        activations.append((linear1.forward(x_ten_test[i]) > 0))
+def _interference_test():
+    return ((interference_y_test - model(interference_x_test).argmax(1)) ** 2).numpy()
 
-    # calculate sparse activation overlap
-    same_mean = np.array([0 for _ in range(len(x_ten_test))], dtype=float)
-    same_count = np.copy(same_mean)
-    different_mean = np.copy(same_mean)
-    different_count = np.copy(same_mean)
-    for i in range(len(x_ten_test)):
-        for j in range(i, len(x_ten_test)):
-            value = (activations[i] & activations[j]).int().float().mean().item()
-            if y_ten_test[i] == y_ten_test[j]:
-                same_count[i] += 1
-                same_mean[i] += (value - same_mean[i]) / same_count[i]
-            else:
-                different_count[i] += 1
-                different_mean[i] += (value - different_mean[i]) / different_count[i]
-    return np.mean(different_mean / same_mean)
+def test_pairwise_interference():
+    pre_performance = np.tile(_interference_test(), (len(interference_x_test), 1))
+    post_performance = np.zeros_like(pre_performance)
+    state_dict = copy.deepcopy(model.state_dict())
+    optimizer_state_dict = copy.deepcopy(optimizer.state_dict())
+    for i in range(len(interference_x_test)):
+        y_pred = model(interference_x_test[i, :]).double()
+        y = interference_y_test[i].long()
+        loss = loss_fn(y_pred.unsqueeze(0), y.unsqueeze(0))
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        post_performance[i, :] = _interference_test()
+        model.load_state_dict(copy.deepcopy(state_dict))
+        optimizer.load_state_dict(copy.deepcopy(optimizer_state_dict))
+    return float(np.mean(post_performance - pre_performance))
 
 # create helper function for phase transitions
 if experiment['criteria'] == 'steps':
@@ -470,10 +466,10 @@ for phase in range(len(experiment['phases'])):
         loss.backward()
         optimizer.step()
         if (experiment['test_folds'] is not None) and (not (i % experiment['log_frequency'])):
-            experiment['accuracies'].append(get_accuracies(model))
-            experiment['predictions'].append(get_predictions(model))
-            experiment['activation_overlap'].append(get_activation_overlap(model))
-            experiment['sparse_activation_overlap'].append(get_sparse_activation_overlap(model))
+            experiment['accuracies'].append(test_accuracies())
+            experiment['predictions'].append(test_predictions())
+            experiment['activation_similarity'].append(test_activation_similarity())
+            experiment['pairwise_interference'].append(test_pairwise_interference())
         i += 1
         if correct:
             j += 1
