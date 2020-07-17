@@ -17,11 +17,11 @@ repeat_labels = [
     'validation_folds']
 result_labels = [
     'accuracies',
-    'activation_overlap',
+    'activation_similarity',
     'correct',
+    'pairwise_interference',
     'phase_length',
     'predictions',
-    'sparse_activation_overlap',
     'success']
 hyperparameter_labels = [
     'beta_1',
@@ -175,14 +175,22 @@ def phase_time_metric(phase, buffer_count=0, buffer_value=0):
     return lambda x: sum(x['phases_avg'][:phase] +
                          buffer_value * max(buffer_count - x['count'][0], 0))
 
-def get_best(summary, metric):
+def get_best(summary, metric, fields=None):
     """Filters a summary to obtain the best average total of a metric for each optimizer."""
     rv = dict()
-    for key, value in summary.items():
-        optimizer = key.optimizer
-        if (optimizer not in rv) or (metric(value) < metric(rv[optimizer])):
-            rv[optimizer] = value
-    return rv
+    for summary_key, value in summary.items():
+        if fields is None:
+            rv_key = None
+        else:
+            rv_key = tuple([summary_key._asdict()[field] \
+                            for field in fields \
+                            if summary_key._asdict()[field] is not None])
+        if (rv_key not in rv) or (metric(value) < metric(rv[rv_key])):
+            rv[rv_key] = value
+    if fields is None:
+        return rv[None]
+    else:
+        return rv
 
 def get_only_best(results, best):
     """Filters a set of results to only contain the entries that used the hyperparameter setting

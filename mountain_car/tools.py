@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import collections
+import itertools
 import json
 import numpy as np
 import pandas as pd
@@ -22,10 +23,9 @@ repeat_labels = [
     'network_seed']
 result_labels = [
     'accuracy',
-    'activation_overlap',
+    'activation_similarity',
     'auc',
-    'pairwise_interference',
-    'sparse_activation_overlap']
+    'pairwise_interference']
 hyperparameter_labels = [
     'approximator',
     'beta_1',
@@ -107,8 +107,7 @@ def load_clean_data(files):
         if entry['approximator'] == 'constant':
             entry['optimizer'] = 'constant'  # rest of plotting relies on optimizer being defined
         else:
-            entry['final_activation_overlap'] = entry['activation_overlap'][-1]
-            entry['final_sparse_activation_overlap'] = entry['sparse_activation_overlap'][-1]
+            entry['final_activation_similarity'] = entry['activation_similarity'][-1]
             entry['final_pairwise_interference'] = entry['pairwise_interference'][-1]
         if (entry['optimizer'] == 'sgd') and (abs(float(entry['momentum'])) > EPS):
             entry['optimizer'] = 'momentum'  # separate sgd with and without momentum
@@ -137,7 +136,7 @@ def get_summary(data):
             temp[key]['mean_accuracy'].append(np.mean(entry['accuracy']))
             temp[key]['final_accuracy'].append(entry['final_accuracy'])
             if key.optimizer != 'constant':
-                for key2 in ['activation_overlap', 'sparse_activation_overlap', 'pairwise_interference']:
+                for key2 in ['activation_similarity', 'pairwise_interference']:
                     temp[key]['final_{}'.format(key2)].append(entry['final_{}'.format(key2)])
                     temp[key]['mean_{}'.format(key2)].append(np.mean(entry[key2]))
         else:
@@ -146,7 +145,7 @@ def get_summary(data):
             value['mean_accuracy'] = [np.mean(entry['accuracy'])]
             value['final_accuracy'] = [entry['final_accuracy']]
             if key.optimizer != 'constant':
-                for metric in ['activation_overlap', 'sparse_activation_overlap', 'pairwise_interference']:
+                for metric in ['activation_similarity', 'pairwise_interference']:
                     value['final_{}'.format(metric)] = [entry['final_{}'.format(metric)]]
                     value['mean_{}'.format(metric)] = [np.mean(entry[metric])]
             temp[key] = value
@@ -157,8 +156,7 @@ def get_summary(data):
         for key2 in ['auc',
                      'mean_accuracy',
                      'final_accuracy',
-                     'mean_activation_overlap',
-                     'mean_sparse_activation_overlap',
+                     'mean_activation_similarity',
                      'mean_pairwise_interference']:
             try:
                 entry['{}_mean'.format(key2)] = np.mean(value[key2])
@@ -169,17 +167,40 @@ def get_summary(data):
         table.append(entry)
     return pd.DataFrame(list_of_dicts_to_dict_of_lists(table))
 
-def get_best(data, metric, summary=None):
+def get_subtable(df, fields, values):
+    assert(len(fields) == len(values))
+    rv = df
+    for field, value in zip(fields, values):
+        try:  # have to deal with nan != nan
+            isnan = np.isnan(value)
+        except TypeError:
+            isnan = False
+
+        if (value in rv[field].unique()) or (isnan and np.isnan(rv[field].unique()).any()):
+            if isnan:
+                rv = rv[np.isnan(rv[field])]
+            else:
+                rv = rv[rv[field] == value]
+        else:
+            return pd.DataFrame({field: [] for field in fields})
+    return rv
+
+def get_unique(df, fields):
+    rv = [list(df[field].unique()) for field in fields]
+    rv = list(itertools.product(*rv))
+    return [v for v in rv if len(get_subtable(df, fields, v)) > 0]
+
+def get_best(data, fields, metric, summary=None):
     if summary is None:
         summary = get_summary(data)
     assert(metric in ['auc', 'final_accuracy'])
 
     # build best table
-    best = list()
-    for optimizer in summary['optimizer'].unique():
-        sub_table = summary[summary['optimizer'] == optimizer]
-        best.append((sub_table.loc[sub_table['{}_mean'.format(metric)].idxmin()]).to_dict())
-    return pd.DataFrame(list_of_dicts_to_dict_of_lists(best))
+    rv = list()
+    for key in get_unique(summary, fields):
+        subtable = get_subtable(summary, fields, key)
+        rv.append((subtable.loc[subtable['{}_mean'.format(metric)].idxmin()]).to_dict())
+    return pd.DataFrame(list_of_dicts_to_dict_of_lists(rv))
 
 def get_best_by_optimizer(data, best_auc_table=None):
     if best_auc_table is None:
