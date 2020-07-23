@@ -1,0 +1,12 @@
+H1: Reject with p = 1.793264664406116e-161
+H2: Reject with p = 1.733030436674368e-142
+H3: Reject with p = 5.203621626224388e-58
+H4: Reject with p = 2.5318345598906936e-240
+H5: Reject with p = 0.0
+H6: Reject with p = 1.3158052511630634e-91
+H7: Reject with p = 3.396977455038521e-183
+H8: Reject with p = 0.0
+H9: Reject with p = 8.964775463422577e-60
+H10: Reject with p = 1.1452613658583078e-237
+H11: Reject with p = 0.0
+

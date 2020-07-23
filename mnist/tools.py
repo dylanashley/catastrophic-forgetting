@@ -202,3 +202,16 @@ def get_only_best(results, best):
         if key == get_hyperparameter_key(best[key.optimizer]):
             rv = rv.append(row)
     return rv
+
+def load_data(files):
+    raw_results = list()
+    for filename in files:
+        with open(filename, 'r') as infile:
+            raw_results += json.load(infile)
+    results = list_of_dicts_to_dict_of_lists(raw_results)
+    del raw_results
+    for key, value in results.items():
+        results[key] = to_nested_tuples(value)
+    rdf = pd.DataFrame(data=results)
+    del results
+    return rdf

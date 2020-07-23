@@ -91,7 +91,7 @@ def scale_observation(value):
     assert(all([- 1 <= rv[i] <= 1 for i in range(len(rv))]))
     return tuple(rv)
 
-def load_clean_data(files):
+def load_data(files):
     rv = list()
     for filename in files:
         with open(filename, 'r') as infile:
@@ -109,8 +109,11 @@ def load_clean_data(files):
         else:
             entry['final_activation_similarity'] = entry['activation_similarity'][-1]
             entry['final_pairwise_interference'] = entry['pairwise_interference'][-1]
-        if (entry['optimizer'] == 'sgd') and (abs(float(entry['momentum'])) > EPS):
-            entry['optimizer'] = 'momentum'  # separate sgd with and without momentum
+        if entry['optimizer'] == 'sgd':  # separate sgd with and without momentum
+            if abs(float(entry['momentum'])) > EPS:
+                entry['optimizer'] = 'momentum'
+            else:
+                entry['momentum'] = None
 
     to_delete = list()
     constant_seeds = set()
@@ -135,19 +138,23 @@ def get_summary(data):
             temp[key]['auc'].append(entry['auc'])
             temp[key]['mean_accuracy'].append(np.mean(entry['accuracy']))
             temp[key]['final_accuracy'].append(entry['final_accuracy'])
+            temp[key]['accuracy'].append(entry['accuracy'])
             if key.optimizer != 'constant':
                 for key2 in ['activation_similarity', 'pairwise_interference']:
                     temp[key]['final_{}'.format(key2)].append(entry['final_{}'.format(key2)])
                     temp[key]['mean_{}'.format(key2)].append(np.mean(entry[key2]))
+                    temp[key]['{}'.format(key2)].append(entry[key2])
         else:
             value = dict()
             value['auc'] = [entry['auc']]
             value['mean_accuracy'] = [np.mean(entry['accuracy'])]
             value['final_accuracy'] = [entry['final_accuracy']]
+            value['accuracy'] = [entry['accuracy']]
             if key.optimizer != 'constant':
                 for metric in ['activation_similarity', 'pairwise_interference']:
                     value['final_{}'.format(metric)] = [entry['final_{}'.format(metric)]]
                     value['mean_{}'.format(metric)] = [np.mean(entry[metric])]
+                    value['{}'.format(metric)] = [entry[metric]]
             temp[key] = value
     table = list()
     for key1, value in temp.items():
@@ -155,12 +162,17 @@ def get_summary(data):
         entry['count'] = len(value['auc'])
         for key2 in ['auc',
                      'mean_accuracy',
-                     'final_accuracy',
                      'mean_activation_similarity',
-                     'mean_pairwise_interference']:
+                     'mean_pairwise_interference',
+                     'final_accuracy',
+                     'final_activation_similarity',
+                     'final_pairwise_interference',
+                     'accuracy',
+                     'activation_similarity',
+                     'pairwise_interference']:
             try:
-                entry['{}_mean'.format(key2)] = np.mean(value[key2])
-                entry['{}_stderr'.format(key2)] = np.std(value[key2]) / np.sqrt(len(value[key2]))
+                entry['{}_mean'.format(key2)] = np.mean(value[key2], axis=0)
+                entry['{}_stderr'.format(key2)] = np.std(value[key2], axis=0) / np.sqrt(np.shape(value[key2])[0])
             except KeyError:
                 entry['{}_mean'.format(key2)] = np.nan
                 entry['{}_stderr'.format(key2)] = np.nan
@@ -201,37 +213,3 @@ def get_best(data, fields, metric, summary=None):
         subtable = get_subtable(summary, fields, key)
         rv.append((subtable.loc[subtable['{}_mean'.format(metric)].idxmin()]).to_dict())
     return pd.DataFrame(list_of_dicts_to_dict_of_lists(rv))
-
-def get_best_by_optimizer(data, best_auc_table=None):
-    if best_auc_table is None:
-        best_auc_table = get_best_auc_table(data, get_auc_table(data))
-
-    # build best by optimizer dict
-    best_keys = {row['optimizer']: get_hyperparameter_key(row.to_dict()) for _, row in best_auc_table.iterrows()}
-    rv = dict()
-    for entry in data:
-        optimizer = entry['optimizer']
-        if get_hyperparameter_key(entry) == best_keys[optimizer]:
-            if optimizer not in rv:
-                rv[optimizer] = [entry]
-            else:
-                rv[optimizer].append(entry)
-    return rv
-
-def get_best_by_optimizer_summary(data, best_auc_table=None, best_by_optimizer=None):
-    if best_auc_table is None:
-        best_auc_table = get_best(data, 'auc')
-    if best_by_optimizer is None:
-        best_by_optimizer = get_best_by_optimizer(data, best_auc_table)
-
-    # build best by optimizer summary dict
-    rv = {row['optimizer']: row.to_dict() for _, row in best_auc_table.iterrows()}
-    for key1 in rv.keys():
-        for key2 in result_labels:
-            try:
-                values = np.array([item[key2] for item in best_by_optimizer[key1]])
-                rv[key1][key2 + '_mean'] = np.mean(values, axis=0)
-                rv[key1][key2 + '_stderr'] = np.std(values, axis=0) / np.sqrt(values.shape[0])
-            except TypeError:
-                pass
-    return rv
