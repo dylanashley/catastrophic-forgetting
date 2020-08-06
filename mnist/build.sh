@@ -284,7 +284,7 @@ for INIT_SEED in `seq 0 49`; do
             echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
         done
 
-        for RHO in '0.81' '0.9' '0.99'; do
+        for RHO in '0.81' '0.9' '0.99' '0.999'; do
             TRAIN_FOLDS='0:1::0:1::2:3::2:3'
             TEST_FOLDS='4:5'
             PHASES='12:34:12:34'
@@ -524,6 +524,34 @@ for INIT_SEED in `seq 50 549`; do
     OPTIMIZER='rms'
     RHO='0.99'
     LR='0.001953125'
+    OUTFILE="$I"'.json'
+    I=$((I + 1))
+    ARGS=("--outfile=$OUTFILE"
+          "--dataset=$DATASET"
+          "--fold-count=$FOLD_COUNT"
+          "--train-folds=$TRAIN_FOLDS"
+          "--test-folds=$TEST_FOLDS"
+          "--phases=$PHASES"
+          "--test-on-all-digits"
+          "--log-frequency=$LOG_FREQUENCY"
+          "--init-seed=$INIT_SEED"
+          "--shuffle-seed=$SHUFFLE_SEED"
+          "--criteria=$CRITERIA"
+          "--required-accuracy=$REQUIRED_ACCURACY"
+          "--tolerance=$TOLERANCE"
+          "--minimum-steps=$MINIMUM_STEPS"
+          "--hold-steps=$HOLD_STEPS"
+          "--optimizer=$OPTIMIZER"
+          "--lr=$LR"
+          "--rho=$RHO")
+    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+
+    TRAIN_FOLDS='6::6::7::7'
+    TEST_FOLDS='8:9'
+    PHASES='12:34:12:34'
+    OPTIMIZER='rms'
+    RHO='0.999'
+    LR='0.00048828125'
     OUTFILE="$I"'.json'
     I=$((I + 1))
     ARGS=("--outfile=$OUTFILE"

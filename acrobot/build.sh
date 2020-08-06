@@ -87,7 +87,7 @@ for ENV_SEED in `seq 0 49`; do
             echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
         done
 
-        for RHO in '0.81' '0.9' '0.99'; do
+        for RHO in '0.81' '0.9' '0.99' '0.999'; do
             OPTIMIZER='rms'
             OUTFILE="$I"'.json'
             I=$((I + 1))
@@ -249,6 +249,23 @@ for ENV_SEED in `seq 50 549`; do
     I=$((I + 1))
     RHO='0.99'
     LR='0.011048543456039806'
+    ARGS=("--outfile=$OUTFILE"
+          "--num-episodes=$NUM_EPISODES"
+          "--env-seed=$ENV_SEED"
+          "--approximator=$APPROXIMATOR"
+          "--network-seed=$NETWORK_SEED"
+          "--loss=$LOSS"
+          "--target-update=$TARGET_UPDATE"
+          "--optimizer=$OPTIMIZER"
+          "--lr=$LR"
+          "--rho=$RHO")
+    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+
+    OPTIMIZER='rms'
+    OUTFILE="$I"'.json'
+    I=$((I + 1))
+    RHO='0.999'
+    LR='0.00390625'
     ARGS=("--outfile=$OUTFILE"
           "--num-episodes=$NUM_EPISODES"
           "--env-seed=$ENV_SEED"
