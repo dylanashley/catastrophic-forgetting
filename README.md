@@ -10,4 +10,4 @@ Once you've finished commenting out sections in one of the `build.sh` files, exe
 
 The `results.ipynb` notebook can be used to visualize the resulting data. To use this notebook, users will additionally need Jupyter 1.0.0 installed with Matplotlib 3.1.0, SciPy 1.3.0, Seaborn 0.9.0, and Statsmodels 0.11.1. As with the `build.sh` file, the `results.ipynb` file contains multiple sections. To generate the plots, ensure the data is named as the notebook expects and execute the `Setup` section of the notebook first, and then the section corresponding to the selected setting and section.
 
-Any questions or requests for assistance in operating this code can be directed to [Dylan R. Ashley](dashley@ualberta.ca).
+Any questions or requests for assistance in operating this code can be directed to [Dylan R. Ashley](https://dylanashley.ca/).
