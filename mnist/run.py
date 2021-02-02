@@ -408,7 +408,7 @@ def test_activation_similarity():
 
 @torch.no_grad()
 def _interference_test():
-    return ((interference_y_test - model(interference_x_test).argmax(1)) ** 2).numpy()
+    return (model(interference_x_test).argmax(axis=1) == interference_y_test).int().numpy()
 
 def test_pairwise_interference():
     pre_performance = np.tile(_interference_test(), (len(interference_x_test), 1))
