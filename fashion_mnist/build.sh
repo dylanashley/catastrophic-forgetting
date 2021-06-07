@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT=$(dirname "$0")'/run.py'
-TASKS_PER_FILE=250
+TASKS_PER_FILE=125
 
 LEARNING_RATES=('0.125'
                 '0.0625'
@@ -28,13 +28,13 @@ I=0
 
 # set shared parameters for all experiments
 CRITERIA='online'
-DATASET='mnist'
+DATASET='fashion_mnist'
 FOLD_COUNT='10'
 HOLD_STEPS='5'
 LOG_FREQUENCY='1'
 MINIMUM_STEPS='0'
 REQUIRED_ACCURACY='0.9'
-TOLERANCE='2500'
+TOLERANCE='10000'
 
 #### Train ###################################################################
 
@@ -136,7 +136,6 @@ fi
 
 #### Test ####################################################################
 
-
 if [[ "$1" == "test" ]]; then
 
     for INIT_SEED in `seq 50 549`; do
@@ -147,34 +146,6 @@ if [[ "$1" == "test" ]]; then
         PHASES='12:34:12:34'
         OPTIMIZER='sgd'
         MOMENTUM='0.0'
-        LR='0.0625'
-        OUTFILE="$I"'.json'
-        I=$((I + 1))
-        ARGS=("--outfile=$OUTFILE"
-              "--dataset=$DATASET"
-              "--fold-count=$FOLD_COUNT"
-              "--train-folds=$TRAIN_FOLDS"
-              "--test-folds=$TEST_FOLDS"
-              "--phases=$PHASES"
-              "--test-on-all-digits"
-              "--log-frequency=$LOG_FREQUENCY"
-              "--init-seed=$INIT_SEED"
-              "--shuffle-seed=$SHUFFLE_SEED"
-              "--criteria=$CRITERIA"
-              "--required-accuracy=$REQUIRED_ACCURACY"
-              "--tolerance=$TOLERANCE"
-              "--minimum-steps=$MINIMUM_STEPS"
-              "--hold-steps=$HOLD_STEPS"
-              "--optimizer=$OPTIMIZER"
-              "--lr=$LR"
-              "--momentum=$MOMENTUM")
-        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
-
-        TRAIN_FOLDS='6::6::7::7'
-        TEST_FOLDS='8:9'
-        PHASES='12:34:12:34'
-        OPTIMIZER='sgd'
-        MOMENTUM='0.81'
         LR='0.015625'
         OUTFILE="$I"'.json'
         I=$((I + 1))
@@ -202,8 +173,36 @@ if [[ "$1" == "test" ]]; then
         TEST_FOLDS='8:9'
         PHASES='12:34:12:34'
         OPTIMIZER='sgd'
+        MOMENTUM='0.81'
+        LR='0.001953125'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        ARGS=("--outfile=$OUTFILE"
+              "--dataset=$DATASET"
+              "--fold-count=$FOLD_COUNT"
+              "--train-folds=$TRAIN_FOLDS"
+              "--test-folds=$TEST_FOLDS"
+              "--phases=$PHASES"
+              "--test-on-all-digits"
+              "--log-frequency=$LOG_FREQUENCY"
+              "--init-seed=$INIT_SEED"
+              "--shuffle-seed=$SHUFFLE_SEED"
+              "--criteria=$CRITERIA"
+              "--required-accuracy=$REQUIRED_ACCURACY"
+              "--tolerance=$TOLERANCE"
+              "--minimum-steps=$MINIMUM_STEPS"
+              "--hold-steps=$HOLD_STEPS"
+              "--optimizer=$OPTIMIZER"
+              "--lr=$LR"
+              "--momentum=$MOMENTUM")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+
+        TRAIN_FOLDS='6::6::7::7'
+        TEST_FOLDS='8:9'
+        PHASES='12:34:12:34'
+        OPTIMIZER='sgd'
         MOMENTUM='0.9'
-        LR='0.0078125'
+        LR='0.0009765625'
         OUTFILE="$I"'.json'
         I=$((I + 1))
         ARGS=("--outfile=$OUTFILE"
@@ -231,7 +230,7 @@ if [[ "$1" == "test" ]]; then
         PHASES='12:34:12:34'
         OPTIMIZER='sgd'
         MOMENTUM='0.99'
-        LR='0.0009765625'
+        LR='0.000244140625'
         OUTFILE="$I"'.json'
         I=$((I + 1))
         ARGS=("--outfile=$OUTFILE"
@@ -259,62 +258,6 @@ if [[ "$1" == "test" ]]; then
         PHASES='12:34:12:34'
         OPTIMIZER='rms'
         RHO='0.81'
-        LR='0.0078125'
-        OUTFILE="$I"'.json'
-        I=$((I + 1))
-        ARGS=("--outfile=$OUTFILE"
-              "--dataset=$DATASET"
-              "--fold-count=$FOLD_COUNT"
-              "--train-folds=$TRAIN_FOLDS"
-              "--test-folds=$TEST_FOLDS"
-              "--phases=$PHASES"
-              "--test-on-all-digits"
-              "--log-frequency=$LOG_FREQUENCY"
-              "--init-seed=$INIT_SEED"
-              "--shuffle-seed=$SHUFFLE_SEED"
-              "--criteria=$CRITERIA"
-              "--required-accuracy=$REQUIRED_ACCURACY"
-              "--tolerance=$TOLERANCE"
-              "--minimum-steps=$MINIMUM_STEPS"
-              "--hold-steps=$HOLD_STEPS"
-              "--optimizer=$OPTIMIZER"
-              "--lr=$LR"
-              "--rho=$RHO")
-        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
-
-        TRAIN_FOLDS='6::6::7::7'
-        TEST_FOLDS='8:9'
-        PHASES='12:34:12:34'
-        OPTIMIZER='rms'
-        RHO='0.9'
-        LR='0.0078125'
-        OUTFILE="$I"'.json'
-        I=$((I + 1))
-        ARGS=("--outfile=$OUTFILE"
-              "--dataset=$DATASET"
-              "--fold-count=$FOLD_COUNT"
-              "--train-folds=$TRAIN_FOLDS"
-              "--test-folds=$TEST_FOLDS"
-              "--phases=$PHASES"
-              "--test-on-all-digits"
-              "--log-frequency=$LOG_FREQUENCY"
-              "--init-seed=$INIT_SEED"
-              "--shuffle-seed=$SHUFFLE_SEED"
-              "--criteria=$CRITERIA"
-              "--required-accuracy=$REQUIRED_ACCURACY"
-              "--tolerance=$TOLERANCE"
-              "--minimum-steps=$MINIMUM_STEPS"
-              "--hold-steps=$HOLD_STEPS"
-              "--optimizer=$OPTIMIZER"
-              "--lr=$LR"
-              "--rho=$RHO")
-        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
-
-        TRAIN_FOLDS='6::6::7::7'
-        TEST_FOLDS='8:9'
-        PHASES='12:34:12:34'
-        OPTIMIZER='rms'
-        RHO='0.99'
         LR='0.001953125'
         OUTFILE="$I"'.json'
         I=$((I + 1))
@@ -342,8 +285,64 @@ if [[ "$1" == "test" ]]; then
         TEST_FOLDS='8:9'
         PHASES='12:34:12:34'
         OPTIMIZER='rms'
-        RHO='0.999'
+        RHO='0.9'
+        LR='0.001953125'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        ARGS=("--outfile=$OUTFILE"
+              "--dataset=$DATASET"
+              "--fold-count=$FOLD_COUNT"
+              "--train-folds=$TRAIN_FOLDS"
+              "--test-folds=$TEST_FOLDS"
+              "--phases=$PHASES"
+              "--test-on-all-digits"
+              "--log-frequency=$LOG_FREQUENCY"
+              "--init-seed=$INIT_SEED"
+              "--shuffle-seed=$SHUFFLE_SEED"
+              "--criteria=$CRITERIA"
+              "--required-accuracy=$REQUIRED_ACCURACY"
+              "--tolerance=$TOLERANCE"
+              "--minimum-steps=$MINIMUM_STEPS"
+              "--hold-steps=$HOLD_STEPS"
+              "--optimizer=$OPTIMIZER"
+              "--lr=$LR"
+              "--rho=$RHO")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+
+        TRAIN_FOLDS='6::6::7::7'
+        TEST_FOLDS='8:9'
+        PHASES='12:34:12:34'
+        OPTIMIZER='rms'
+        RHO='0.99'
         LR='0.00048828125'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        ARGS=("--outfile=$OUTFILE"
+              "--dataset=$DATASET"
+              "--fold-count=$FOLD_COUNT"
+              "--train-folds=$TRAIN_FOLDS"
+              "--test-folds=$TEST_FOLDS"
+              "--phases=$PHASES"
+              "--test-on-all-digits"
+              "--log-frequency=$LOG_FREQUENCY"
+              "--init-seed=$INIT_SEED"
+              "--shuffle-seed=$SHUFFLE_SEED"
+              "--criteria=$CRITERIA"
+              "--required-accuracy=$REQUIRED_ACCURACY"
+              "--tolerance=$TOLERANCE"
+              "--minimum-steps=$MINIMUM_STEPS"
+              "--hold-steps=$HOLD_STEPS"
+              "--optimizer=$OPTIMIZER"
+              "--lr=$LR"
+              "--rho=$RHO")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+
+        TRAIN_FOLDS='6::6::7::7'
+        TEST_FOLDS='8:9'
+        PHASES='12:34:12:34'
+        OPTIMIZER='rms'
+        RHO='0.999'
+        LR='0.000244140625'
         OUTFILE="$I"'.json'
         I=$((I + 1))
         ARGS=("--outfile=$OUTFILE"
@@ -372,7 +371,7 @@ if [[ "$1" == "test" ]]; then
         OPTIMIZER='adam'
         BETA_1='0.9'
         BETA_2='0.999'
-        LR='0.00390625'
+        LR='0.0009765625'
         OUTFILE="$I"'.json'
         I=$((I + 1))
         ARGS=("--outfile=$OUTFILE"

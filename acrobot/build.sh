@@ -35,13 +35,6 @@ LEARNING_RATES=('0.125'
                 '5.3947966093944364e-06'
                 '3.814697265625e-06')
 
-# assert command line arguments valid
-if [ "$#" -gt "0" ]
-    then
-        echo 'usage: ./build.sh'
-        exit
-    fi
-
 # begin amalgamating all tasks
 TASKS_PREFIX='tasks_'
 rm "$TASKS_PREFIX"*.sh 2>/dev/null
@@ -55,58 +48,25 @@ TARGET_UPDATE='1'
 
 ##### Train ###################################################################
 
-for ENV_SEED in `seq 0 49`; do
+if [[ "$1" == "train" ]]; then
 
-    APPROXIMATOR='constant'
-    OUTFILE="$I"'.json'
-    I=$((I + 1))
-    ARGS=("--outfile=$OUTFILE"
-          "--num-episodes=$NUM_EPISODES"
-          "--env-seed=$ENV_SEED"
-          "--approximator=$APPROXIMATOR")
-    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+    for ENV_SEED in `seq 0 49`; do
 
-    APPROXIMATOR='neural_network'
-    NETWORK_SEED=$(((1<<16) - 1 - ENV_SEED))
+        APPROXIMATOR='constant'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        ARGS=("--outfile=$OUTFILE"
+              "--num-episodes=$NUM_EPISODES"
+              "--env-seed=$ENV_SEED"
+              "--approximator=$APPROXIMATOR")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
-    for LR in "${LEARNING_RATES[@]}"; do
-        for MOMENTUM in '0.0' '0.81' '0.9' '0.99'; do
-            OPTIMIZER='sgd'
-            OUTFILE="$I"'.json'
-            I=$((I + 1))
-            ARGS=("--outfile=$OUTFILE"
-                  "--num-episodes=$NUM_EPISODES"
-                  "--env-seed=$ENV_SEED"
-                  "--approximator=$APPROXIMATOR"
-                  "--network-seed=$NETWORK_SEED"
-                  "--loss=$LOSS"
-                  "--target-update=$TARGET_UPDATE"
-                  "--optimizer=$OPTIMIZER"
-                  "--lr=$LR"
-                  "--momentum=$MOMENTUM")
-            echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
-        done
+        APPROXIMATOR='neural_network'
+        NETWORK_SEED=$(((1<<16) - 1 - ENV_SEED))
 
-        for RHO in '0.81' '0.9' '0.99' '0.999'; do
-            OPTIMIZER='rms'
-            OUTFILE="$I"'.json'
-            I=$((I + 1))
-            ARGS=("--outfile=$OUTFILE"
-                  "--num-episodes=$NUM_EPISODES"
-                  "--env-seed=$ENV_SEED"
-                  "--approximator=$APPROXIMATOR"
-                  "--network-seed=$NETWORK_SEED"
-                  "--loss=$LOSS"
-                  "--target-update=$TARGET_UPDATE"
-                  "--optimizer=$OPTIMIZER"
-                  "--lr=$LR"
-                  "--rho=$RHO")
-            echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
-        done
-
-        for BETA_1 in '0.9'; do
-            for BETA_2 in '0.999'; do
-                OPTIMIZER='adam'
+        for LR in "${LEARNING_RATES[@]}"; do
+            for MOMENTUM in '0.0' '0.81' '0.9' '0.99'; do
+                OPTIMIZER='sgd'
                 OUTFILE="$I"'.json'
                 I=$((I + 1))
                 ARGS=("--outfile=$OUTFILE"
@@ -118,185 +78,224 @@ for ENV_SEED in `seq 0 49`; do
                       "--target-update=$TARGET_UPDATE"
                       "--optimizer=$OPTIMIZER"
                       "--lr=$LR"
-                      "--beta-1=$BETA_1"
-                      "--beta-2=$BETA_2")
+                      "--momentum=$MOMENTUM")
                 echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+            done
+
+            for RHO in '0.81' '0.9' '0.99' '0.999'; do
+                OPTIMIZER='rms'
+                OUTFILE="$I"'.json'
+                I=$((I + 1))
+                ARGS=("--outfile=$OUTFILE"
+                      "--num-episodes=$NUM_EPISODES"
+                      "--env-seed=$ENV_SEED"
+                      "--approximator=$APPROXIMATOR"
+                      "--network-seed=$NETWORK_SEED"
+                      "--loss=$LOSS"
+                      "--target-update=$TARGET_UPDATE"
+                      "--optimizer=$OPTIMIZER"
+                      "--lr=$LR"
+                      "--rho=$RHO")
+                echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+            done
+
+            for BETA_1 in '0.9'; do
+                for BETA_2 in '0.999'; do
+                    OPTIMIZER='adam'
+                    OUTFILE="$I"'.json'
+                    I=$((I + 1))
+                    ARGS=("--outfile=$OUTFILE"
+                          "--num-episodes=$NUM_EPISODES"
+                          "--env-seed=$ENV_SEED"
+                          "--approximator=$APPROXIMATOR"
+                          "--network-seed=$NETWORK_SEED"
+                          "--loss=$LOSS"
+                          "--target-update=$TARGET_UPDATE"
+                          "--optimizer=$OPTIMIZER"
+                          "--lr=$LR"
+                          "--beta-1=$BETA_1"
+                          "--beta-2=$BETA_2")
+                    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+                done
             done
         done
     done
-done
+fi
 
 ##### Test ####################################################################
 
-for ENV_SEED in `seq 50 549`; do
+if [[ "$1" == "test" ]]; then
 
-    APPROXIMATOR='constant'
-    OUTFILE="$I"'.json'
-    I=$((I + 1))
-    ARGS=("--outfile=$OUTFILE"
-          "--num-episodes=$NUM_EPISODES"
-          "--env-seed=$ENV_SEED"
-          "--approximator=$APPROXIMATOR")
-    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+    for ENV_SEED in `seq 50 549`; do
 
-    APPROXIMATOR='neural_network'
-    NETWORK_SEED=$(((1<<16) - 1 - ENV_SEED))
+        APPROXIMATOR='constant'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        ARGS=("--outfile=$OUTFILE"
+              "--num-episodes=$NUM_EPISODES"
+              "--env-seed=$ENV_SEED"
+              "--approximator=$APPROXIMATOR")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
-    OPTIMIZER='sgd'
-    OUTFILE="$I"'.json'
-    I=$((I + 1))
-    MOMENTUM='0.0'
-    LR='0.00017263349150062197'
-    ARGS=("--outfile=$OUTFILE"
-          "--num-episodes=$NUM_EPISODES"
-          "--env-seed=$ENV_SEED"
-          "--approximator=$APPROXIMATOR"
-          "--network-seed=$NETWORK_SEED"
-          "--loss=$LOSS"
-          "--target-update=$TARGET_UPDATE"
-          "--optimizer=$OPTIMIZER"
-          "--lr=$LR"
-          "--momentum=$MOMENTUM")
-    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+        APPROXIMATOR='neural_network'
+        NETWORK_SEED=$(((1<<16) - 1 - ENV_SEED))
 
-    OPTIMIZER='sgd'
-    OUTFILE="$I"'.json'
-    I=$((I + 1))
-    MOMENTUM='0.81'
-    LR='4.315837287515549e-05'
-    ARGS=("--outfile=$OUTFILE"
-          "--num-episodes=$NUM_EPISODES"
-          "--env-seed=$ENV_SEED"
-          "--approximator=$APPROXIMATOR"
-          "--network-seed=$NETWORK_SEED"
-          "--loss=$LOSS"
-          "--target-update=$TARGET_UPDATE"
-          "--optimizer=$OPTIMIZER"
-          "--lr=$LR"
-          "--momentum=$MOMENTUM")
-    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+        OPTIMIZER='sgd'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        MOMENTUM='0.0'
+        LR='0.00017263349150062197'
+        ARGS=("--outfile=$OUTFILE"
+              "--num-episodes=$NUM_EPISODES"
+              "--env-seed=$ENV_SEED"
+              "--approximator=$APPROXIMATOR"
+              "--network-seed=$NETWORK_SEED"
+              "--loss=$LOSS"
+              "--target-update=$TARGET_UPDATE"
+              "--optimizer=$OPTIMIZER"
+              "--lr=$LR"
+              "--momentum=$MOMENTUM")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
-    OPTIMIZER='sgd'
-    OUTFILE="$I"'.json'
-    I=$((I + 1))
-    MOMENTUM='0.9'
-    LR='2.1579186437577746e-05'
-    ARGS=("--outfile=$OUTFILE"
-          "--num-episodes=$NUM_EPISODES"
-          "--env-seed=$ENV_SEED"
-          "--approximator=$APPROXIMATOR"
-          "--network-seed=$NETWORK_SEED"
-          "--loss=$LOSS"
-          "--target-update=$TARGET_UPDATE"
-          "--optimizer=$OPTIMIZER"
-          "--lr=$LR"
-          "--momentum=$MOMENTUM")
-    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+        OPTIMIZER='sgd'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        MOMENTUM='0.81'
+        LR='4.315837287515549e-05'
+        ARGS=("--outfile=$OUTFILE"
+              "--num-episodes=$NUM_EPISODES"
+              "--env-seed=$ENV_SEED"
+              "--approximator=$APPROXIMATOR"
+              "--network-seed=$NETWORK_SEED"
+              "--loss=$LOSS"
+              "--target-update=$TARGET_UPDATE"
+              "--optimizer=$OPTIMIZER"
+              "--lr=$LR"
+              "--momentum=$MOMENTUM")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
-    OPTIMIZER='sgd'
-    OUTFILE="$I"'.json'
-    I=$((I + 1))
-    MOMENTUM='0.99'
-    LR='7.62939453125e-06'
-    ARGS=("--outfile=$OUTFILE"
-          "--num-episodes=$NUM_EPISODES"
-          "--env-seed=$ENV_SEED"
-          "--approximator=$APPROXIMATOR"
-          "--network-seed=$NETWORK_SEED"
-          "--loss=$LOSS"
-          "--target-update=$TARGET_UPDATE"
-          "--optimizer=$OPTIMIZER"
-          "--lr=$LR"
-          "--momentum=$MOMENTUM")
-    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+        OPTIMIZER='sgd'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        MOMENTUM='0.9'
+        LR='2.1579186437577746e-05'
+        ARGS=("--outfile=$OUTFILE"
+              "--num-episodes=$NUM_EPISODES"
+              "--env-seed=$ENV_SEED"
+              "--approximator=$APPROXIMATOR"
+              "--network-seed=$NETWORK_SEED"
+              "--loss=$LOSS"
+              "--target-update=$TARGET_UPDATE"
+              "--optimizer=$OPTIMIZER"
+              "--lr=$LR"
+              "--momentum=$MOMENTUM")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
-    OPTIMIZER='rms'
-    OUTFILE="$I"'.json'
-    I=$((I + 1))
-    RHO='0.81'
-    LR='1.0789593218788873e-05'
-    ARGS=("--outfile=$OUTFILE"
-          "--num-episodes=$NUM_EPISODES"
-          "--env-seed=$ENV_SEED"
-          "--approximator=$APPROXIMATOR"
-          "--network-seed=$NETWORK_SEED"
-          "--loss=$LOSS"
-          "--target-update=$TARGET_UPDATE"
-          "--optimizer=$OPTIMIZER"
-          "--lr=$LR"
-          "--rho=$RHO")
-    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+        OPTIMIZER='sgd'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        MOMENTUM='0.99'
+        LR='7.62939453125e-06'
+        ARGS=("--outfile=$OUTFILE"
+              "--num-episodes=$NUM_EPISODES"
+              "--env-seed=$ENV_SEED"
+              "--approximator=$APPROXIMATOR"
+              "--network-seed=$NETWORK_SEED"
+              "--loss=$LOSS"
+              "--target-update=$TARGET_UPDATE"
+              "--optimizer=$OPTIMIZER"
+              "--lr=$LR"
+              "--momentum=$MOMENTUM")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
-    OPTIMIZER='rms'
-    OUTFILE="$I"'.json'
-    I=$((I + 1))
-    RHO='0.9'
-    LR='1.0789593218788873e-05'
-    ARGS=("--outfile=$OUTFILE"
-          "--num-episodes=$NUM_EPISODES"
-          "--env-seed=$ENV_SEED"
-          "--approximator=$APPROXIMATOR"
-          "--network-seed=$NETWORK_SEED"
-          "--loss=$LOSS"
-          "--target-update=$TARGET_UPDATE"
-          "--optimizer=$OPTIMIZER"
-          "--lr=$LR"
-          "--rho=$RHO")
-    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+        OPTIMIZER='rms'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        RHO='0.81'
+        LR='1.0789593218788873e-05'
+        ARGS=("--outfile=$OUTFILE"
+              "--num-episodes=$NUM_EPISODES"
+              "--env-seed=$ENV_SEED"
+              "--approximator=$APPROXIMATOR"
+              "--network-seed=$NETWORK_SEED"
+              "--loss=$LOSS"
+              "--target-update=$TARGET_UPDATE"
+              "--optimizer=$OPTIMIZER"
+              "--lr=$LR"
+              "--rho=$RHO")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
-    OPTIMIZER='rms'
-    OUTFILE="$I"'.json'
-    I=$((I + 1))
-    RHO='0.99'
-    LR='0.011048543456039806'
-    ARGS=("--outfile=$OUTFILE"
-          "--num-episodes=$NUM_EPISODES"
-          "--env-seed=$ENV_SEED"
-          "--approximator=$APPROXIMATOR"
-          "--network-seed=$NETWORK_SEED"
-          "--loss=$LOSS"
-          "--target-update=$TARGET_UPDATE"
-          "--optimizer=$OPTIMIZER"
-          "--lr=$LR"
-          "--rho=$RHO")
-    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+        OPTIMIZER='rms'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        RHO='0.9'
+        LR='1.0789593218788873e-05'
+        ARGS=("--outfile=$OUTFILE"
+              "--num-episodes=$NUM_EPISODES"
+              "--env-seed=$ENV_SEED"
+              "--approximator=$APPROXIMATOR"
+              "--network-seed=$NETWORK_SEED"
+              "--loss=$LOSS"
+              "--target-update=$TARGET_UPDATE"
+              "--optimizer=$OPTIMIZER"
+              "--lr=$LR"
+              "--rho=$RHO")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
-    OPTIMIZER='rms'
-    OUTFILE="$I"'.json'
-    I=$((I + 1))
-    RHO='0.999'
-    LR='0.00390625'
-    ARGS=("--outfile=$OUTFILE"
-          "--num-episodes=$NUM_EPISODES"
-          "--env-seed=$ENV_SEED"
-          "--approximator=$APPROXIMATOR"
-          "--network-seed=$NETWORK_SEED"
-          "--loss=$LOSS"
-          "--target-update=$TARGET_UPDATE"
-          "--optimizer=$OPTIMIZER"
-          "--lr=$LR"
-          "--rho=$RHO")
-    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+        OPTIMIZER='rms'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        RHO='0.99'
+        LR='0.011048543456039806'
+        ARGS=("--outfile=$OUTFILE"
+              "--num-episodes=$NUM_EPISODES"
+              "--env-seed=$ENV_SEED"
+              "--approximator=$APPROXIMATOR"
+              "--network-seed=$NETWORK_SEED"
+              "--loss=$LOSS"
+              "--target-update=$TARGET_UPDATE"
+              "--optimizer=$OPTIMIZER"
+              "--lr=$LR"
+              "--rho=$RHO")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
 
-    OPTIMIZER='adam'
-    OUTFILE="$I"'.json'
-    I=$((I + 1))
-    BETA_1='0.9'
-    BETA_2='0.999'
-    LR='0.00390625'
-    ARGS=("--outfile=$OUTFILE"
-          "--num-episodes=$NUM_EPISODES"
-          "--env-seed=$ENV_SEED"
-          "--approximator=$APPROXIMATOR"
-          "--network-seed=$NETWORK_SEED"
-          "--loss=$LOSS"
-          "--target-update=$TARGET_UPDATE"
-          "--optimizer=$OPTIMIZER"
-          "--lr=$LR"
-          "--beta-1=$BETA_1"
-          "--beta-2=$BETA_2")
-    echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
-done
+        OPTIMIZER='rms'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        RHO='0.999'
+        LR='0.00390625'
+        ARGS=("--outfile=$OUTFILE"
+              "--num-episodes=$NUM_EPISODES"
+              "--env-seed=$ENV_SEED"
+              "--approximator=$APPROXIMATOR"
+              "--network-seed=$NETWORK_SEED"
+              "--loss=$LOSS"
+              "--target-update=$TARGET_UPDATE"
+              "--optimizer=$OPTIMIZER"
+              "--lr=$LR"
+              "--rho=$RHO")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+
+        OPTIMIZER='adam'
+        OUTFILE="$I"'.json'
+        I=$((I + 1))
+        BETA_1='0.9'
+        BETA_2='0.999'
+        LR='0.00390625'
+        ARGS=("--outfile=$OUTFILE"
+              "--num-episodes=$NUM_EPISODES"
+              "--env-seed=$ENV_SEED"
+              "--approximator=$APPROXIMATOR"
+              "--network-seed=$NETWORK_SEED"
+              "--loss=$LOSS"
+              "--target-update=$TARGET_UPDATE"
+              "--optimizer=$OPTIMIZER"
+              "--lr=$LR"
+              "--beta-1=$BETA_1"
+              "--beta-2=$BETA_2")
+        echo 'python -O '"$SCRIPT"' '"${ARGS[*]}" >> tasks.sh
+    done
+fi
 
 ###############################################################################
 
